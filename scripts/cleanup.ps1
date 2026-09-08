@@ -1,0 +1,1 @@
+Write-Host "Cleanup script"

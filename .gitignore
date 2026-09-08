@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output (portable builds, installer exes, zips)
+_build_src/
+dist/
+
+# Runtime state / keys / config that must never be published
+analytics.json
+paypal-config.json
+license/keys.json
+license/license.json
+
+# Stale self-update downloads / runtime state
+app/updates/
+
+# IDE / tooling
+.idea/
+.opencode/
+*.iml
+.vscode/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS junk
+Thumbs.db
+.DS_Store

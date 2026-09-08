@@ -1,0 +1,88 @@
+name: Build & Release
+
+# Builds the portable ZIP (+ Inno Setup installer, best effort) and publishes it
+# to a GitHub Release so customers can download and install it.
+#
+# Trigger options:
+#   - Actions > "Build & Release" > Run workflow (version optional, defaults to package.json)
+#   - Push a tag v1.2.0 (uses the tag as the version)
+#   - Locally: .\scripts\release.ps1 1.2.1  (bumps version, commits, tags, pushes)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.2.0). Leave blank to use package.json.'
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build portable ZIP
+        run: npm run build
+
+      - name: Build Inno Setup installer (best effort)
+        continue-on-error: true
+        run: |
+          choco install innosetup -y --no-progress
+          npm run build:installer
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            $v = "${{ github.ref_name }}"
+          } else {
+            $v = "${{ github.event.inputs.version }}".Trim()
+            if ($v -eq '') { $v = (Get-Content package.json | ConvertFrom-Json).version }
+          }
+          $v = $v.TrimStart('v')
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$v"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "tag=v$v"
+
+      - name: Stage release assets
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          $name = (Get-Content package.json | ConvertFrom-Json).name
+          New-Item -ItemType Directory -Force -Path ./release | Out-Null
+          Get-ChildItem -Path ./dist -Include *.zip,*.exe -File | ForEach-Object {
+            if ($_.Extension -eq '.zip') {
+              Copy-Item $_.FullName -Destination "./release/$name-$v-portable.zip"
+            } else {
+              Copy-Item $_.FullName -Destination "./release/$($_.Name)"
+            }
+          }
+          Get-ChildItem ./release | Select-Object Name, Length
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body: |
+            **Download the portable ZIP**, extract it, and run the app. See the README for full install steps.
+          files: release/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false
