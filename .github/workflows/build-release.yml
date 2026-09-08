@@ -65,13 +65,13 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ steps.version.outputs.version }}"
-          $name = (Get-Content package.json | ConvertFrom-Json).name
           New-Item -ItemType Directory -Force -Path ./release | Out-Null
           Get-ChildItem -Path ./dist -Include *.zip,*.exe -File | ForEach-Object {
             if ($_.Extension -eq '.zip') {
-              Copy-Item $_.FullName -Destination "./release/$name-$v-portable.zip"
+              # Stable asset name so releases/latest/download URLs never break
+              Copy-Item $_.FullName -Destination "./release/pctg-optimizer-portable.zip"
             } else {
-              Copy-Item $_.FullName -Destination "./release/$($_.Name)"
+              Copy-Item $_.FullName -Destination "./release/PCTG-Optimizer-Setup.exe"
             }
           }
           Get-ChildItem ./release | Select-Object Name, Length
