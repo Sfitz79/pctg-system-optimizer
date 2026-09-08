@@ -16,7 +16,7 @@ const filesToObfuscate = [
   'report/report.js', 'report/systemInfo.js', 'report/system-analyzer.js'
 ];
 const dirsToCopy = ['app', 'scripts', 'license', 'report', 'assets'];
-const filesToCopy = ['main.js', 'preload.js', 'package.json', 'app.manifest', 'paypal-config.json'];
+const filesToCopy = ['main.js', 'preload.js', 'package.json', 'package-lock.json', 'app.manifest', 'paypal-config.json'];
 
 async function main() {
   console.log('1. Cleaning...');
@@ -28,7 +28,20 @@ async function main() {
     fs.cpSync(path.join(rootDir, dir), path.join(buildDir, dir), { recursive: true });
   }
   for (const file of filesToCopy) {
-    fs.cpSync(path.join(rootDir, file), path.join(buildDir, file));
+    const src = path.join(rootDir, file);
+    if (fs.existsSync(src)) {
+      fs.cpSync(src, path.join(buildDir, file));
+      continue;
+    }
+    // Optional files (gitignored locally, absent on clean CI checkout):
+    // create a safe placeholder so the packaged app always has the file.
+    if (file === 'paypal-config.json') {
+      fs.writeFileSync(
+        path.join(buildDir, file),
+        JSON.stringify({ clientId: 'YOUR_PAYPAL_CLIENT_ID', secret: 'YOUR_PAYPAL_SECRET', mode: 'sandbox', currency: 'GBP' }, null, 2)
+      );
+      console.log(`  created ${file} placeholder (never commit real PayPal credentials)`);
+    }
   }
 
   // Ensure licence runtime files exist in the build (gitignored in the repo, so
@@ -96,6 +109,12 @@ async function main() {
     );
   } else {
     const nodeDist = path.join(rootDir, 'node_modules', 'electron', 'dist');
+    if (!fs.existsSync(nodeDist)) {
+      // Clean CI: if electron's install script was skipped/failed (e.g. old
+      // Node), run it explicitly so the binary is available.
+      console.log('  Electron dist missing - running electron install script...');
+      execSync('node node_modules/electron/install.js', { cwd: rootDir, stdio: 'inherit' });
+    }
     if (!fs.existsSync(nodeDist)) {
       console.error(`  Electron source not found: tried ${electronZip} and ${nodeDist}`);
       process.exit(1);
