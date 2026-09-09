@@ -145,6 +145,20 @@
     .cta-banner h2 { margin-bottom: 10px; }
     .cta-banner p { color: var(--muted); margin-bottom: 26px; }
 
+    /* DOWNLOAD */
+    .dl-box { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .dl-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 30px 26px; text-align: center; transition: transform 0.15s, border-color 0.15s;
+    }
+    .dl-card:hover { transform: translateY(-4px); border-color: var(--neon); }
+    .dl-card .dl-icon { font-size: 36px; margin-bottom: 14px; }
+    .dl-card h3 { font-size: 20px; margin-bottom: 6px; }
+    .dl-card .dl-sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+    .dl-card p { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
+    .dl-card .btn { display: block; }
+    .dl-note { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+
     /* FOOTER */
     footer { border-top: 1px solid var(--border); padding: 34px 0; margin-top: 40px; }
     .footer-inner { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; color: var(--muted); font-size: 14px; }
@@ -155,6 +169,7 @@
     @media (max-width: 900px) {
       .features, .pricing { grid-template-columns: 1fr 1fr; }
       .mods { grid-template-columns: 1fr 1fr; }
+      .dl-box { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) {
       .features, .pricing, .mods { grid-template-columns: 1fr; }
@@ -173,6 +188,7 @@
       </div>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#download">Download</a>
         <a href="#pricing">Buy Now</a>
         <a href="#modules">What's Included</a>
         <a href="mailto:info@pctechguyonline.com">Contact</a>
@@ -190,7 +206,8 @@
         No subscriptions. No bloat. Just a faster, smoother, safer PC.
       </p>
       <div class="hero-ctas">
-        <a href="#pricing" class="btn btn-primary">Get Your Licence</a>
+        <a href="#download" class="btn btn-primary">Download Now</a>
+        <a href="#pricing" class="btn btn-secondary">Get Your Licence</a>
         <a href="#features" class="btn btn-secondary">See What It Does</a>
       </div>
       <div class="hero-stats">
@@ -241,6 +258,40 @@
           <h3>Full restore</h3>
           <p>Every optimisation can be rolled back with a system restore point. Nothing you can't undo, nothing risky left behind.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" style="background: var(--bg2);">
+    <div class="wrap">
+      <div class="kicker">Download now</div>
+      <h2>Get PCTG System Optimizer Pro</h2>
+      <p class="section-lede">
+        Two ways to install — grab the portable ZIP to run straight from a USB stick with no installation,
+        or the installer if you'd rather have it set up properly on your Windows PC.
+      </p>
+      <div class="dl-box">
+        <div class="dl-card">
+          <div class="dl-icon">📦</div>
+          <h3>Portable (ZIP)</h3>
+          <div class="dl-sub">No installation needed</div>
+          <p>Extract the ZIP anywhere and run — great for USB sticks, quick tune-ups and portable use on multiple PCs.</p>
+          <a href="https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/pctg-optimizer-portable.zip" target="_blank" rel="noopener" class="btn btn-primary">Download Portable ZIP</a>
+          <div class="dl-note">v1.2.0 · Windows 10 / 11</div>
+        </div>
+        <div class="dl-card">
+          <div class="dl-icon">🖥️</div>
+          <h3>Installer (EXE)</h3>
+          <div class="dl-sub">Recommended install</div>
+          <p>The full setup installer — runs the whole 20-minute optimisation protocol with a proper start-menu app.</p>
+          <a href="https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/PCTG-Optimizer-Setup.exe" target="_blank" rel="noopener" class="btn btn-primary">Download Installer (EXE)</a>
+          <div class="dl-note">v1.2.0 · Windows 10 / 11</div>
+        </div>
+      </div>
+      <div class="trust">
+        <div class="trust-item"><strong>🔑</strong> You'll need a licence key to activate</div>
+        <div class="trust-item"><strong>🇬🇧</strong> Built in the UK</div>
+        <div class="trust-item"><strong>★</strong> Trustpilot 4.8/5</div>
       </div>
     </div>
   </section>
