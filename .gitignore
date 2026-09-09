@@ -1,0 +1,15 @@
+# Vercel local config
+.vercel/
+
+# IDE
+.idea/
+
+# OpenCode agent configs
+.opencode/
+
+# Dependencies and build artifacts
+node_modules/
+dist/
+
+# Standalone Electron app (has its own git repo)
+pctg-optimizer/

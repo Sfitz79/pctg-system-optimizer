@@ -1,0 +1,5 @@
+pctg-optimizer/
+dist/
+.git/
+.idea/
+*.ps1

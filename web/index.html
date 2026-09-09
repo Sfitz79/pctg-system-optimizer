@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PCTG Optimizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="intro-3d">
+    <div class="particle-layer"></div>
+    <div class="particle-layer layer2"></div>
+    <div class="holo-container">
+      <img src="logo.png" class="holo-logo" />
+    </div>
+    <div class="intro-flash"></div>
+  </div>
+
+  <div id="license-screen" class="screen">
+    <img src="logo.png" alt="PCTG Logo" class="brand-logo">
+    <h2>PCTG System Optimizer Pro</h2>
+    <input id="license-input" placeholder="Enter your license key">
+    <button id="activate-btn">Activate</button>
+    <div id="pricing">
+      <div class="tier-card" data-tier="standard">
+        <div class="tier-name">Standard</div>
+        <div class="tier-price">£30</div>
+        <div class="tier-features">Clean & Clear · Performance Boost · Final Sweep · Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/30" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card featured" data-tier="pro">
+        <div class="tier-name">PRO</div>
+        <div class="tier-price">£50</div>
+        <div class="tier-features">Everything + FPS · Security · Internet/WiFi · WinFix · Deep · Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/50" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card" data-tier="fps">
+        <div class="tier-name">FPS Booster</div>
+        <div class="tier-price">£10</div>
+        <div class="tier-features">Gaming FPS Booster + Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/10" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card" data-tier="security">
+        <div class="tier-name">Security</div>
+        <div class="tier-price">£10</div>
+        <div class="tier-features">Security Hardening + Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/10" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card" data-tier="internet">
+        <div class="tier-name">Internet/WiFi</div>
+        <div class="tier-price">£10</div>
+        <div class="tier-features">Internet & WiFi Optimization + Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/10" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card" data-tier="winfix">
+        <div class="tier-name">WinFix</div>
+        <div class="tier-price">£10</div>
+        <div class="tier-features">1‑Click Windows File Check & Fix + Restore</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/10" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card" data-tier="deep">
+        <div class="tier-name">Deep Optimize</div>
+        <div class="tier-price">£10</div>
+        <div class="tier-features">Windows Deep Optimization + Toggle Controls</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/10" target="_blank">Buy Now</a>
+      </div>
+      <div class="tier-card featured" data-tier="repair">
+        <div class="tier-name">System Test &amp; Repair</div>
+        <div class="tier-price">£25</div>
+        <div class="tier-features">SFC/DISM &bull; CHKDSK &bull; BCD Boot Check &bull; Network Reset &bull; Memory Diag &bull; Stability Check</div>
+        <a class="btn tier-buy" href="https://www.paypal.me/pctechguyonline305/25" target="_blank">Buy Now</a>
+      </div>
+    </div>
+    <p class="activation-warning">PLEASE ENSURE YOU MAKE NOTE OF YOUR ACTIVATION KEY — YOU GET UNLIMITED USAGE BUT LOST / FORGOTTEN KEYS CANNOT BE RECOVERED</p>
+    <p id="license-error"></p>
+
+    <section class="help-section">
+      <h2>Need More Help or Other Services?</h2>
+
+      <div class="service-buttons">
+        <a href="https://pctechguyonline.com/custom-gaming-pcs" class="btn">Custom Gaming PC Builds</a>
+        <a href="https://pctechguyonline.com/pc-repair" class="btn">PC Repair &amp; Troubleshooting</a>
+        <a href="https://pctechguyonline.com/optimizer-pro" class="btn">Performance Optimization</a>
+        <a href="https://pctechguyonline.com/used-pc-consultation" class="btn">Used PC Consultation (£30)</a>
+        <a href="https://pctechguyonline.com/used-pc-test" class="btn">Used PC Test &amp; Optimise (£50)</a>
+        <a href="https://pctechguyonline.com/hybrid-gaming-rigs" class="btn">Hybrid Gaming Rigs</a>
+        <a href="https://pctechguyonline.com/pc-cleaning" class="btn">PC Deep Clean &amp; Thermal Refresh</a>
+        <a href="https://pctechguyonline.com/software-store" class="btn">Software Store</a>
+        <a href="https://pctechguy.app" class="btn">PC Builder App (Beta)</a>
+      </div>
+
+      <h3>Connect With Us</h3>
+      <div class="social-buttons">
+        <a href="https://facebook.com/pctechguyonline" class="btn social">Facebook</a>
+        <a href="https://instagram.com/pctechguyonline" class="btn social">Instagram</a>
+        <a href="https://tiktok.com/@pctechguyonline" class="btn social">TikTok</a>
+        <a href="https://discord.gg/pctechguyonline" class="btn social">Discord</a>
+        <a href="https://x.com/pctechguyonline" class="btn social">Twitter / X</a>
+      </div>
+
+      <h3>Contact</h3>
+      <div class="contact-buttons">
+        <a href="mailto:info@pctechguyonline.com" class="btn contact">Email Support</a>
+        <a href="https://wa.me/447933101083" class="btn contact">WhatsApp Chat</a>
+        <a href="https://pctechguyonline.com" class="btn contact">Visit Website</a>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <span>📧 <a href="mailto:info@pctechguyonline.com">info@pctechguyonline.com</a></span>
+        <span>📞 <a href="https://wa.me/447933101083">+44 7933 101083</a></span>
+        <span>🌐 <a href="https://pctechguyonline.com">pctechguyonline.com</a></span>
+        <span class="trustpilot">★ Trustpilot 4.8/5 — Rated Excellent</span>
+      </div>
+    </footer>
+  </div>
+
+  <div id="app" class="screen" style="display:none">
+    <div class="nav">
+      <img src="logo.png" alt="PCTG Logo" class="brand-logo">
+      <button id="nav-dashboard" class="nav-btn active">Dashboard</button>
+      <button id="nav-optimizer" class="nav-btn">Optimizer</button>
+      <button id="nav-analytics" class="nav-btn">Analytics</button>
+      <span id="tier-badge" class="tier-badge"></span>
+    </div>
+
+    <div id="dashboard-view" class="app">
+      <div id="update-banner" class="update-banner">
+        <p>New version available!</p>
+        <button id="update-btn">Update Now</button>
+      </div>
+
+      <img src="logo.png" alt="PCTG Logo" class="page-logo">
+      <h1>System Dashboard</h1>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">CPU Usage</div>
+          <div class="stat-value" id="stat-cpu">0%</div>
+          <div class="bar-bg"><div class="bar-fill" id="bar-cpu"></div></div>
+          <div class="stat-sub" id="stat-cpu-info">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Memory</div>
+          <div class="stat-value" id="stat-ram">0%</div>
+          <div class="bar-bg"><div class="bar-fill" id="bar-ram"></div></div>
+          <div class="stat-sub" id="stat-ram-info">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Uptime</div>
+          <div class="stat-value" id="stat-uptime">—</div>
+          <div class="stat-sub" id="stat-uptime-info">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">System</div>
+          <div class="stat-value" id="stat-os">—</div>
+          <div class="stat-sub" id="stat-os-info">—</div>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <h3>Real-Time Usage</h3>
+        <canvas id="usage-chart" width="700" height="200"></canvas>
+      </div>
+
+      <div class="benchmark-section">
+        <h3>Before / After Benchmark</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:10px">Test performance before and after optimization.</p>
+        <div class="bench-controls">
+          <button id="btn-bench-full" class="primary">Run Full Benchmark (FPS + Network)</button>
+          <button id="btn-bench-fps" class="btn">Test FPS Only</button>
+          <button id="btn-bench-net" class="btn">Test Network Only</button>
+          <button id="btn-bench-open" class="btn">Test at TestMySpec.com</button>
+        </div>
+        <canvas id="bench-canvas" style="display:none" width="200" height="200"></canvas>
+        <div id="bench-results-box" class="results-box" style="display:none">
+          <h4 style="color:var(--pctg-neon);margin:0 0 8px">Performance Results</h4>
+        </div>
+        <div id="results-box" class="results-box" style="display:none">
+          <h3 style="color:var(--pctg-neon);margin:0 0 10px">System Performance Increase</h3>
+          <div class="result-row"><span>FPS Improvement</span><span id="res-fps" class="result-val">—</span></div>
+          <div class="result-row"><span>Network Responsiveness</span><span id="res-net" class="result-val">—</span></div>
+          <div class="result-row"><span>Overall Performance Gain</span><span id="res-overall" class="result-val highlight">—</span></div>
+          <div class="result-row"><span>Disk Space Cleaned</span><span id="res-disk" class="result-val">—</span></div>
+          <hr style="border-color:rgba(0,255,65,0.1);margin:8px 0">
+          <div id="res-changelog" style="font-size:11px;color:#888;max-height:150px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="optimizer-view" class="app" style="display:none">
+      <img src="logo.png" alt="PCTG Logo" class="page-logo">
+      <h1>PcTechGuyOnline Optimizer</h1>
+      <p>Run the full 20‑minute PCTG optimisation protocol in 3 phases.</p>
+
+      <div class="phases">
+        <button id="btn-cleanup" data-tip="cleanup">Phase 1 — Clean & Clear</button>
+        <button id="btn-performance" data-tip="performance">Phase 2 — Performance Boost</button>
+        <button id="btn-final" data-tip="finalSweep">Phase 3 — Final Sweep</button>
+        <button id="btn-all" class="primary" data-tip="allInOne">Run Full Optimisation</button>
+        <button id="btn-pro" class="primary" data-tip="proMode">Run PRO Mode</button>
+        <button id="btn-fps" data-tip="fps">Gaming FPS Booster</button>
+        <button id="btn-secure" data-tip="security">Security Hardening</button>
+        <button id="btn-restore" data-tip="restore">Restore System</button>
+        <button id="btn-internet" data-tip="internet">Internet / WiFi Optimization</button>
+        <button id="btn-winfix" data-tip="winfix">1‑Click WinFix</button>
+        <button id="btn-registry" data-tip="registry">Registry Optimization</button>
+        <button id="btn-disk" data-tip="disk">Disk Optimization</button>
+        <button id="btn-deep" class="primary" data-tip="deep">Windows Deep Optimization</button>
+        <button id="btn-master" class="primary" data-tip="master">System Master Toolkit</button>
+        <button id="btn-repair" class="primary" data-tip="repair">System Test &amp; Repair</button>
+      </div>
+
+      <div class="section" id="deep-opt-section">
+        <h3 class="section-toggle" onclick="toggleSection('deep-opt-section')">▼ Windows Deep Optimization Toggles</h3>
+        <div class="section-body">
+          <div class="toggle-row"><span class="toggle-label">Disable Startup Apps</span><button class="toggle-btn" data-toggle="startupApps">OFF</button></div>
+          <div class="toggle-row"><span class="toggle-label">Disable Background Apps</span><button class="toggle-btn" data-toggle="backgroundApps">OFF</button></div>
+          <div class="toggle-row"><span class="toggle-label">Reduce Telemetry</span><button class="toggle-btn" data-toggle="telemetry">OFF</button></div>
+          <div class="toggle-row"><span class="toggle-label">Disable Xbox Game Bar</span><button class="toggle-btn" data-toggle="gameBar">OFF</button></div>
+          <div class="toggle-row"><span class="toggle-label">Disable OneDrive Auto‑Start</span><button class="toggle-btn" data-toggle="oneDrive">OFF</button></div>
+          <div class="toggle-row"><span class="toggle-label">Disable Widgets</span><button class="toggle-btn" data-toggle="widgets">OFF</button></div>
+        </div>
+      </div>
+
+      <div class="section" id="benchmark-section">
+        <h3 class="section-toggle" onclick="toggleSection('benchmark-section')">▼ Before / After Benchmark</h3>
+        <div class="section-body">
+          <p style="color:#888;font-size:12px">Use the Benchmark section on the Dashboard to test FPS and network performance before/after optimization. Results are shared across the app.</p>
+        </div>
+      </div>
+
+      <div id="progress-container">
+        <div id="progress-label"></div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-bar"></div></div>
+        <div id="progress-status"></div>
+      </div>
+
+      <pre id="log"></pre>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="btn-export-pdf" class="primary" style="flex:1">Export PDF Report</button>
+        <button id="btn-report" class="primary" style="flex:1">Generate Report</button>
+      </div>
+    </div>
+
+    <div id="analytics-view" class="app" style="display:none">
+      <img src="logo.png" alt="PCTG Logo" class="page-logo">
+      <h1>Anonymous Analytics</h1>
+      <p style="color:#888;font-size:12px">Local usage data — never sent anywhere.</p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Installs</div>
+          <div class="stat-value" id="anal-installs">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Updates Downloaded</div>
+          <div class="stat-value" id="anal-updates">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">PDF Reports Exported</div>
+          <div class="stat-value" id="anal-exports">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Days Active</div>
+          <div class="stat-value" id="anal-days">—</div>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <h3>Module Usage</h3>
+        <div id="analytics-phases"></div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <span>📧 <a href="mailto:info@pctechguyonline.com">info@pctechguyonline.com</a></span>
+        <span>📞 <a href="https://wa.me/447933101083">+44 7933 101083</a></span>
+        <span>🌐 <a href="https://pctechguyonline.com">pctechguyonline.com</a></span>
+        <span class="trustpilot">★ Trustpilot 4.8/5 — Rated Excellent</span>
+      </div>
+    </footer>
+  </div>
+  <script src="tooltips.js"></script>
+  <script src="tooltip-engine.js"></script>
+  <script>
+    function playVoiceover() {
+      if (localStorage.getItem('voiceover') === 'off') return;
+      const msg = new SpeechSynthesisUtterance(
+        "Welcome to P C T G Optimizer Pro. Your system performance suite designed to boost speed, reduce latency, and keep your PC running at peak efficiency. Preparing your dashboard now."
+      );
+      msg.pitch = 0.4;
+      msg.rate = 0.9;
+      msg.volume = 1;
+      const voices = speechSynthesis.getVoices();
+      const robotic = voices.find(v =>
+        v.name.toLowerCase().includes('zira') ||
+        v.name.toLowerCase().includes('robot') ||
+        v.name.toLowerCase().includes('desktop')
+      );
+      if (robotic) msg.voice = robotic;
+      speechSynthesis.speak(msg);
+    }
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = () => { speechSynthesis.getVoices(); };
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const intro = document.getElementById('intro-3d');
+        if (intro) intro.remove();
+        playVoiceover();
+      }, 3600);
+    });
+  </script>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCTG System Optimizer Pro | Boost FPS, Speed &amp; Security — PcTechGuyOnline</title>
+  <meta name="description" content="PCTG System Optimizer Pro — the UK-built PC tuning suite that boosts FPS, cleans junk, hardens security and fixes Windows. From £10, one-time payment, unlimited use. Buy now from PcTechGuyOnline.">
+  <meta property="og:title" content="PCTG System Optimizer Pro — Boost FPS, Speed &amp; Security">
+  <meta property="og:description" content="UK-built PC tuning suite. FPS boost, deep clean, security hardening, Windows fix and restore. One-time payment, unlimited use.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#7B2FFF">
+  <style>
+    :root {
+      --bg: #0a0710;
+      --bg2: #120b1f;
+      --surface: #171126;
+      --surface2: #1f1733;
+      --border: rgba(255,255,255,0.08);
+      --neon: #7B2FFF;
+      --neon2: #00FF41;
+      --crimson: #D10028;
+      --text: #f2eefb;
+      --muted: #a79ec2;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(1200px 700px at 80% -10%, rgba(123,47,255,0.22), transparent 60%),
+                  radial-gradient(900px 600px at 0% 110%, rgba(0,255,65,0.08), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1140px; margin: 0 auto; padding: 0 22px; }
+
+    /* NAV */
+    nav {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,7,16,0.7);
+      backdrop-filter: blur(8px);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.3px; }
+    .brand img { height: 34px; width: auto; }
+    .brand .sub { color: var(--muted); font-weight: 400; font-size: 13px; }
+    .nav-links { display: flex; gap: 22px; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* HERO */
+    .hero { padding: 84px 0 60px; text-align: center; }
+    .pill {
+      display: inline-block; padding: 6px 14px; border: 1px solid var(--border);
+      border-radius: 999px; font-size: 13px; color: var(--muted); background: var(--surface);
+      margin-bottom: 24px; letter-spacing: 0.4px;
+    }
+    .pill .dot { color: var(--neon2); }
+    h1 {
+      font-size: clamp(34px, 6vw, 60px);
+      font-weight: 800; line-height: 1.05; letter-spacing: -1px;
+      background: linear-gradient(120deg, #fff, #cfc0ff);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      margin-bottom: 18px;
+    }
+    h1 .accent { color: var(--neon); -webkit-text-fill-color: var(--neon); }
+    .hero-sub {
+      font-size: clamp(16px, 2.4vw, 20px); color: var(--muted); max-width: 720px; margin: 0 auto 30px;
+    }
+    .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 14px 28px; border-radius: 10px; font-weight: 700;
+      text-decoration: none; font-size: 15px; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary {
+      background: linear-gradient(120deg, var(--neon), #9b4dff); color: #fff;
+      box-shadow: 0 8px 30px rgba(123,47,255,0.4);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(123,47,255,0.55); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { transform: translateY(-2px); border-color: var(--neon); }
+    .btn-green { background: linear-gradient(120deg, #00c853, #00e676); color: #06300f; }
+    .hero-stats { display: flex; gap: 40px; justify-content: center; margin-top: 52px; flex-wrap: wrap; }
+    .stat .num { font-size: 30px; font-weight: 800; color: #fff; }
+    .stat .lbl { font-size: 13px; color: var(--muted); }
+
+    /* SECTIONS */
+    section { padding: 70px 0; }
+    .kicker { color: var(--neon2); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-size: 13px; margin-bottom: 10px; }
+    h2 { font-size: clamp(26px, 4vw, 38px); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 14px; }
+    .section-lede { color: var(--muted); max-width: 640px; margin-bottom: 40px; }
+
+    /* FEATURES */
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .feature {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 26px; transition: transform 0.15s, border-color 0.15s;
+    }
+    .feature:hover { transform: translateY(-4px); border-color: var(--neon); }
+    .feature .icon { font-size: 30px; margin-bottom: 14px; }
+    .feature h3 { font-size: 18px; margin-bottom: 8px; }
+    .feature p { color: var(--muted); font-size: 14.5px; }
+
+    /* PRICING */
+    .pricing { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+    .tier {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 30px 26px; display: flex; flex-direction: column;
+    }
+    .tier.featured { border: 2px solid var(--neon); background: linear-gradient(180deg, var(--surface2), var(--surface)); }
+    .tier .name { font-weight: 800; font-size: 20px; }
+    .tier .sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+    .tier .price { font-size: 40px; font-weight: 800; letter-spacing: -1px; margin-bottom: 18px; }
+    .tier .price small { font-size: 15px; color: var(--muted); font-weight: 500; }
+    .tier ul { list-style: none; margin-bottom: 24px; flex: 1; }
+    .tier ul li { padding: 5px 0; font-size: 14.5px; color: var(--muted); position: relative; padding-left: 24px; }
+    .tier ul li::before { content: "✓"; position: absolute; left: 0; color: var(--neon2); font-weight: 700; }
+    .badge {
+      display: inline-block; background: linear-gradient(120deg, var(--neon), #9b4dff);
+      color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+      margin-bottom: 10px; letter-spacing: 0.5px;
+    }
+
+    /* MODULES GRID */
+    .mods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .mod { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .mod .mi { font-size: 24px; }
+    .mod h4 { font-size: 15px; margin: 8px 0 4px; }
+    .mod p { color: var(--muted); font-size: 12.5px; }
+
+    /* WARNING / TRUST */
+    .trust { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 40px; }
+    .trust-item { background: var(--surface); border: 1px solid var(--border); padding: 12px 20px; border-radius: 10px; font-size: 14px; color: var(--muted); }
+    .trust-item strong { color: var(--neon2); }
+
+    /* CTA BANNER */
+    .cta-banner {
+      background: linear-gradient(120deg, rgba(123,47,255,0.25), rgba(209,0,40,0.15));
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 48px; text-align: center;
+    }
+    .cta-banner h2 { margin-bottom: 10px; }
+    .cta-banner p { color: var(--muted); margin-bottom: 26px; }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 34px 0; margin-top: 40px; }
+    .footer-inner { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; color: var(--muted); font-size: 14px; }
+    .footer-inner a { color: var(--muted); text-decoration: none; }
+    .footer-inner a:hover { color: var(--text); }
+    .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
+
+    @media (max-width: 900px) {
+      .features, .pricing { grid-template-columns: 1fr 1fr; }
+      .mods { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .features, .pricing, .mods { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      section { padding: 50px 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="wrap nav-inner">
+      <div class="brand">
+        <img src="logo.png" alt="PCTG System Optimizer Pro logo">
+        <span>PCTG System Optimizer <span class="sub">Pro</span></span>
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#pricing">Buy Now</a>
+        <a href="#modules">What's Included</a>
+        <a href="mailto:info@pctechguyonline.com">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="pill"><span class="dot">●</span> UK-built · One-time payment · Unlimited use</span>
+      <h1>Make your PC <span class="accent">feel brand new</span> again</h1>
+      <p class="hero-sub">
+        PCTG System Optimizer Pro is the British-built tuning suite that boosts your FPS,
+        clears out the junk, hardens your security and fixes Windows — all in a few clicks.
+        No subscriptions. No bloat. Just a faster, smoother, safer PC.
+      </p>
+      <div class="hero-ctas">
+        <a href="#pricing" class="btn btn-primary">Get Your Licence</a>
+        <a href="#features" class="btn btn-secondary">See What It Does</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><div class="num">20-min</div><div class="lbl">Optimisation protocol</div></div>
+        <div class="stat"><div class="num">14+</div><div class="lbl">Toolkit modules</div></div>
+        <div class="stat"><div class="num">3-phase</div><div class="lbl">Clean → Boost → Sweep</div></div>
+        <div class="stat"><div class="num">✓</div><div class="lbl">Full system restore</div></div>
+      </div>
+    </div>
+  </header>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="kicker">What it does</div>
+      <h2>An honest tune-up, not snake oil</h2>
+      <p class="section-lede">
+        Real scripts doing real work — the same optimisation playbook a pro tech uses,
+        packaged into a one-click Windows app. Nothing faked, everything measured.
+      </p>
+      <div class="features">
+        <div class="feature">
+          <div class="icon">🎮</div>
+          <h3>Boost your FPS</h3>
+          <p>Game mode, GPU scheduling and timer resolution tweaks to squeeze out smoother frame rates in your favourite titles.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🧹</div>
+          <h3>Clean up the junk</h3>
+          <p>Clear temp files, recycle bin, Windows Update cache and browser clutter to reclaim gigabytes of disk space.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🔒</div>
+          <h3>Harden your security</h3>
+          <p>Defender, firewall, exploit protection and UAC tightening — the everyday security essentials done properly.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">🛠️</div>
+          <h3>Fix Windows problems</h3>
+          <p>SFC, DISM, WMI repair, network reset and disk checks to sort out the niggles before they become disasters.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">📊</div>
+          <h3>See the proof</h3>
+          <p>Run the before/after benchmark and export a PDF report so you can see exactly what changed on your machine.</p>
+        </div>
+        <div class="feature">
+          <div class="icon">↩️</div>
+          <h3>Full restore</h3>
+          <p>Every optimisation can be rolled back with a system restore point. Nothing you can't undo, nothing risky left behind.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modules" style="background: var(--bg2);">
+    <div class="wrap">
+      <div class="kicker">What's included</div>
+      <h2>The full toolkit</h2>
+      <p class="section-lede">From everyday maintenance to pro-level tuning — the PCTG System Optimizer Pro app puts it all in one place.</p>
+      <div class="mods">
+        <div class="mod"><div class="mi">🧹</div><h4>Clean & Clear</h4><p>Phase 1 — junk & temp cleanup</p></div>
+        <div class="mod"><div class="mi">⚡</div><h4>Performance Boost</h4><p>Phase 2 — speed & responsiveness</p></div>
+        <div class="mod"><div class="mi">✨</div><h4>Final Sweep</h4><p>Phase 3 — polish & finish</p></div>
+        <div class="mod"><div class="mi">🎮</div><h4>Gaming FPS Booster</h4><p>Frame-rate focused tuning</p></div>
+        <div class="mod"><div class="mi">🔒</div><h4>Security Hardening</h4><p>Defender, firewall, UAC</p></div>
+        <div class="mod"><div class="mi">🌐</div><h4>Internet / WiFi</h4><p>DNS, Winsock & network tuning</p></div>
+        <div class="mod"><div class="mi">🩹</div><h4>1-Click WinFix</h4><p>SFC & system file repair</p></div>
+        <div class="mod"><div class="mi">🔍</div><h4>Deep Optimize</h4><p>Startup, telemetry & toggles</p></div>
+        <div class="mod"><div class="mi">📋</div><h4>Registry Optimizer</h4><p>Menu delay, Superfetch, tips</p></div>
+        <div class="mod"><div class="mi">💾</div><h4>Disk Optimizer</h4><p>TRIM & drive optimisation</p></div>
+        <div class="mod"><div class="mi">🛠️</div><h4>System Test & Repair</h4><p>SFC/DISM, CHKDSK, BCD, memory</p></div>
+        <div class="mod"><div class="mi">📄</div><h4>PDF Report</h4><p>Export your results</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <div class="kicker">One-time prices</div>
+      <h2>Pay once, use forever</h2>
+      <p class="section-lede">
+        No subscription, no renewal nagging. Pick the level that fits your PC — every licence is a
+        single payment with unlimited use and a full restore option.
+      </p>
+      <div class="pricing">
+        <div class="tier featured">
+          <span class="badge">Best value</span>
+          <div class="name">PRO</div>
+          <div class="sub">The full tuning suite</div>
+          <div class="price">£50</div>
+          <ul>
+            <li>Everything in Standard</li>
+            <li>Gaming FPS booster</li>
+            <li>Security hardening</li>
+            <li>Internet / WiFi optimisation</li>
+            <li>1-Click WinFix</li>
+            <li>Deep optimisation + toggles</li>
+            <li>Full restore</li>
+          </ul>
+          <a href="https://www.paypal.me/pctechguyonline305/50" target="_blank" rel="noopener" class="btn btn-primary">Buy PRO — £50</a>
+        </div>
+
+        <div class="tier">
+          <div class="name">Standard</div>
+          <div class="sub">Everyday maintenance</div>
+          <div class="price">£30</div>
+          <ul>
+            <li>Clean &amp; Clear</li>
+            <li>Performance Boost</li>
+            <li>Final Sweep</li>
+            <li>Full restore</li>
+          </ul>
+          <a href="https://www.paypal.me/pctechguyonline305/30" target="_blank" rel="noopener" class="btn btn-secondary">Buy Standard — £30</a>
+        </div>
+
+        <div class="tier">
+          <div class="name">System Test &amp; Repair</div>
+          <div class="sub">Fix what's broken</div>
+          <div class="price">£25</div>
+          <ul>
+            <li>SFC / DISM repair</li>
+            <li>CHKDSK disk check</li>
+            <li>BCD boot check</li>
+            <li>Network reset</li>
+            <li>Memory diagnostic</li>
+            <li>Stability check</li>
+          </ul>
+          <a href="https://www.paypal.me/pctechguyonline305/25" target="_blank" rel="noopener" class="btn btn-secondary">Buy Repair — £25</a>
+        </div>
+      </div>
+
+      <div class="trust">
+        <div class="trust-item"><strong>✓</strong> Single payment for life</div>
+        <div class="trust-item"><strong>✓</strong> Full system restore included</div>
+        <div class="trust-item"><strong>★</strong> Trustpilot 4.8/5 — Rated Excellent</div>
+        <div class="trust-item"><strong>🇬🇧</strong> Built in the UK</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top: 0;">
+    <div class="wrap">
+      <div class="cta-banner">
+        <h2>Single module? Just want one fix?</h2>
+        <p>
+          FPS Booster, Security, Internet/WiFi, WinFix and Deep Optimize are all available as
+          focused £10 licences — perfect if you only need that one thing sorted.
+        </p>
+        <a href="https://www.paypal.me/pctechguyonline305/10" target="_blank" rel="noopener" class="btn btn-green">Get a £10 Module</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <div class="brand">
+        <img src="logo.png" alt="PCTG logo">
+        <span>PcTechGuyOnline</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://pctechguyonline.com">pctechguyonline.com</a>
+        <a href="mailto:info@pctechguyonline.com">info@pctechguyonline.com</a>
+        <a href="https://wa.me/447933101083">WhatsApp</a>
+        <a href="https://pctechguyonline.com/custom-gaming-pcs">Custom PCs</a>
+        <a href="https://pctechguyonline.com/pc-repair">PC Repair</a>
+        <a href="https://pctechguy.app">PC Builder App</a>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top: 14px; font-size: 12.5px; color: var(--muted);">
+      © 2026 PcTechGuyOnline. All rights reserved. PCTG System Optimizer Pro is a PC optimisation tool — always keep a backup and restore point before making system changes.
+    </div>
+  </footer>
+
+</body>
+</html>
