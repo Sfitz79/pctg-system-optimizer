@@ -86,6 +86,9 @@
     $$('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
     $('#page-title').textContent = TITLES[view];
     render[view]();
+    if (location.hash !== '#' + view) {
+      try { history.replaceState(null, '', '#' + view); } catch (e) { /* hash is cosmetic */ }
+    }
   }
 
   /* ============ DASHBOARD ============ */
@@ -485,7 +488,10 @@
     }, 1000);
 
     renderSideHealth();
-    go('dashboard');
+
+    var startView = (location.hash || '').replace('#', '');
+    if (VIEWS.indexOf(startView) === -1) { startView = 'dashboard'; }
+    go(startView);
   }
 
   document.addEventListener('DOMContentLoaded', boot);

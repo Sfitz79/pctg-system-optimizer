@@ -171,6 +171,21 @@
     .dl-card .btn { display: block; }
     .dl-note { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
 
+    /* APP SCREENSHOTS */
+    .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .shot {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; text-decoration: none; color: var(--text); display: block;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .shot:hover { transform: translateY(-4px); border-color: var(--neon); }
+    .shot img { width: 100%; display: block; border-bottom: 1px solid var(--border); }
+    .shot .shot-cap { padding: 12px 16px; font-size: 13.5px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .shot .shot-cap .arrow { color: var(--neon2); }
+    .shot:hover .shot-cap { color: var(--text); }
+    .shots-note { margin-top: 22px; text-align: center; font-size: 13.5px; color: var(--muted); }
+    .shots-note a { color: var(--neon); }
+
     /* FOOTER */
     footer { border-top: 1px solid var(--border); padding: 34px 0; margin-top: 40px; }
     .footer-inner { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; color: var(--muted); font-size: 14px; }
@@ -182,9 +197,11 @@
       .features, .pricing { grid-template-columns: 1fr 1fr; }
       .mods { grid-template-columns: 1fr 1fr; }
       .dl-box { grid-template-columns: 1fr; }
+      .shots { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 640px) {
       .features, .pricing, .mods { grid-template-columns: 1fr; }
+      .shots { grid-template-columns: 1fr; }
       .nav-links { display: none; }
       section { padding: 50px 0; }
     }
@@ -231,6 +248,43 @@
       </div>
     </div>
   </header>
+
+  <section id="screenshots" style="background: var(--bg2);">
+    <div class="wrap">
+      <div class="kicker">Take a look inside</div>
+      <h2>Look familiar? It's your PC, running properly.</h2>
+      <p class="section-lede">
+        Real screenshots from the app's demo build. Click any one to try that view live — nothing is touched on your machine.
+      </p>
+      <div class="shots">
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#dashboard" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-dashboard.png" alt="PCTG System Optimizer Pro dashboard showing system health, junk found and gaming FPS">
+          <div class="shot-cap">Dashboard <span class="arrow">→</span></div>
+        </a>
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#optimise" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-optimise.png" alt="PCTG System Optimizer Pro one-click optimisation console">
+          <div class="shot-cap">One-Click Optimise <span class="arrow">→</span></div>
+        </a>
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#benchmark" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-benchmark.png" alt="PCTG System Optimizer Pro before and after benchmark results">
+          <div class="shot-cap">Benchmark <span class="arrow">→</span></div>
+        </a>
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#modules" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-modules.png" alt="PCTG System Optimizer Pro full toolkit modules grid">
+          <div class="shot-cap">Toolkit Modules <span class="arrow">→</span></div>
+        </a>
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#restore" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-restore.png" alt="PCTG System Optimizer Pro restore points list">
+          <div class="shot-cap">Restore Points <span class="arrow">→</span></div>
+        </a>
+        <a class="shot" href="https://pctg-optimizer-demo.vercel.app/#licences" target="_blank" rel="noopener">
+          <img src="screenshots/pctg-demo-licences.png" alt="PCTG System Optimizer Pro licence pricing and activation">
+          <div class="shot-cap">Licences <span class="arrow">→</span></div>
+        </a>
+      </div>
+      <div class="shots-note">Want to click around? <a href="https://pctg-optimizer-demo.vercel.app" target="_blank" rel="noopener">Open the full interactive demo →</a></div>
+    </div>
+  </section>
 
   <section id="features">
     <div class="wrap">
