@@ -84,6 +84,18 @@
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { transform: translateY(-2px); border-color: var(--neon); }
     .btn-green { background: linear-gradient(120deg, #00c853, #00e676); color: #06300f; }
+    .btn-demo {
+      background: linear-gradient(120deg, #00b4d8, #4cc9f0); color: #021024;
+      box-shadow: 0 8px 30px rgba(0,180,216,0.35);
+    }
+    .btn-demo:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(0,180,216,0.5); }
+    .demo-band {
+      margin-top: 32px; background: linear-gradient(90deg, rgba(0,180,216,0.12), rgba(123,47,255,0.1));
+      border: 1px solid rgba(0,180,216,0.3); border-radius: var(--radius); padding: 28px 32px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    }
+    .demo-band-text h3 { font-size: 18px; margin-bottom: 4px; }
+    .demo-band-text p { color: var(--muted); font-size: 14px; margin: 0; }
     .hero-stats { display: flex; gap: 40px; justify-content: center; margin-top: 52px; flex-wrap: wrap; }
     .stat .num { font-size: 30px; font-weight: 800; color: #fff; }
     .stat .lbl { font-size: 13px; color: var(--muted); }
@@ -188,6 +200,7 @@
       </div>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="https://pctg-optimizer-demo.vercel.app" target="_blank" rel="noopener">Try Demo</a>
         <a href="#download">Download</a>
         <a href="#pricing">Buy Now</a>
         <a href="#modules">What's Included</a>
@@ -207,8 +220,8 @@
       </p>
       <div class="hero-ctas">
         <a href="#download" class="btn btn-primary">Download Now</a>
+        <a href="https://pctg-optimizer-demo.vercel.app" target="_blank" rel="noopener" class="btn btn-demo">▶ Try the Interactive Demo</a>
         <a href="#pricing" class="btn btn-secondary">Get Your Licence</a>
-        <a href="#features" class="btn btn-secondary">See What It Does</a>
       </div>
       <div class="hero-stats">
         <div class="stat"><div class="num">20-min</div><div class="lbl">Optimisation protocol</div></div>
@@ -292,6 +305,13 @@
         <div class="trust-item"><strong>🔑</strong> You'll need a licence key to activate</div>
         <div class="trust-item"><strong>🇬🇧</strong> Built in the UK</div>
         <div class="trust-item"><strong>★</strong> Trustpilot 4.8/5</div>
+      </div>
+      <div class="demo-band">
+        <div class="demo-band-text">
+          <h3>🎮 Prefer to try before you download?</h3>
+          <p>Click through the full PCTG Optimizer experience — dashboard, one-click optimise, benchmark, toolkit modules, restore points and licence activation — with simulated data. No download, no install, nothing real touched.</p>
+        </div>
+        <a href="https://pctg-optimizer-demo.vercel.app" target="_blank" rel="noopener" class="btn btn-demo">▶ Try the Interactive Demo</a>
       </div>
     </div>
   </section>

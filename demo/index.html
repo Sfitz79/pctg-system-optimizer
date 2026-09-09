@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCTG System Optimizer Pro — Interactive Demo | PcTechGuyOnline</title>
+  <meta name="description" content="Clickable demo of PCTG System Optimizer Pro — UK-built PC tuning suite. Try the CLI-style optimisation, benchmark and restore flows with simulated data. No download, no install, nothing real touched.">
+  <meta name="theme-color" content="#7B2FFF">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- DEMO ONLY BANNER -->
+  <div class="demo-banner" id="demo-banner">
+    <span class="db-dot"></span>
+    <strong>DEMO — simulated data.</strong>
+    <span>Nothing here touches a real system. No files are cleaned, no settings changed, no purchases made.</span>
+    <button class="db-close" id="db-close" aria-label="Dismiss demo notice">✕</button>
+  </div>
+
+  <div class="app" id="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">⚡</div>
+        <div>
+          <div class="brand-name">PCTG Optimizer</div>
+          <div class="brand-sub">PRO · Demo</div>
+        </div>
+      </div>
+
+      <nav class="side-nav" id="side-nav">
+        <button class="nav-item" data-view="dashboard"><span class="ni-icon">🏠</span>Dashboard</button>
+        <button class="nav-item" data-view="optimise"><span class="ni-icon">🚀</span>One-Click Optimise</button>
+        <button class="nav-item" data-view="modules"><span class="ni-icon">🧰</span>Toolkit Modules</button>
+        <button class="nav-item" data-view="benchmark"><span class="ni-icon">📊</span>Benchmark</button>
+        <button class="nav-item" data-view="restore"><span class="ni-icon">↩️</span>Restore Points</button>
+        <button class="nav-item" data-view="licences"><span class="ni-icon">🔑</span>Licences</button>
+        <button class="nav-item" data-view="settings"><span class="ni-icon">⚙️</span>Settings</button>
+      </nav>
+
+      <div class="side-foot">
+        <div class="health-chip" id="side-health">Health: 0%</div>
+        <a class="side-link" href="https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/pctg-optimizer-portable.zip" target="_blank" rel="noopener">Download real app ↓</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="top-right">
+          <span class="lic-badge" id="lic-badge">PRO trial</span>
+          <span class="clock" id="clock">--:--:--</span>
+        </div>
+      </header>
+
+      <section class="view" id="view-dashboard"></section>
+      <section class="view" id="view-optimise" hidden></section>
+      <section class="view" id="view-modules" hidden></section>
+      <section class="view" id="view-benchmark" hidden></section>
+      <section class="view" id="view-restore" hidden></section>
+      <section class="view" id="view-licences" hidden></section>
+      <section class="view" id="view-settings" hidden></section>
+    </main>
+  </div>
+
+  <!-- TOAST HOST -->
+  <div class="toasts" id="toasts"></div>
+
+  <!-- MODAL HOST -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal">
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
