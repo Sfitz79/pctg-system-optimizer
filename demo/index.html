@@ -6,7 +6,13 @@
   <title>PCTG System Optimizer Pro — Interactive Demo | PcTechGuyOnline</title>
   <meta name="description" content="Clickable demo of PCTG System Optimizer Pro — UK-built PC tuning suite. Try the CLI-style optimisation, benchmark and restore flows with simulated data. No download, no install, nothing real touched.">
   <meta name="theme-color" content="#7B2FFF">
-  <link rel="stylesheet" href="styles.css">
+  <!--
+    Absolute /demo/ paths on purpose. The page is served at /demo, so a relative
+    "styles.css" resolves to /styles.css, which falls through to the landing
+    catch-all and 404s - the demo rendered as unstyled default HTML with every
+    control dead.
+  -->
+  <link rel="stylesheet" href="/demo/styles.css">
 </head>
 <body>
 
@@ -76,6 +82,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="/demo/app.js"></script>
 </body>
 </html>
