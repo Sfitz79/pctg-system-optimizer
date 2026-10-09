@@ -20,9 +20,13 @@ contextBridge.exposeInMainWorld('pctg', {
   getSystemAnalysis: () => ipcRenderer.invoke('pctg:get-system-analysis'),
   applyCustomTweaks: (script) => ipcRenderer.invoke('pctg:apply-custom-tweaks', script),
 
-  generateKey: (data) => ipcRenderer.invoke('pctg:generate-key', data),
-  paypalCreateOrder: (data) => ipcRenderer.invoke('pctg:paypal-create-order', data),
-  paypalCaptureOrder: (data) => ipcRenderer.invoke('pctg:paypal-capture-order', data),
+  // generateKey / paypalCreateOrder / paypalCaptureOrder are GONE.
+  // generateKey accepted any 8+ character string as a "PayPal receipt" and issued a
+  // working licence without verifying payment. The PayPal pair needed a live secret
+  // embedded in a customer-downloadable binary and minted keys the server never issued.
+  // Purchase is now handled by pctg:begin-purchase, which hands off to the website
+  // checkout where PayPal credentials stay server-side and keys are written to Postgres.
+  beginPurchase: (data) => ipcRenderer.invoke('pctg:begin-purchase', data),
 
   onPhaseProgress: (callback) => {
     ipcRenderer.on('pctg:phase-progress', (_event, data) => callback(data));

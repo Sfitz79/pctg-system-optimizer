@@ -27,4 +27,8 @@ app/updates/
 
 # OS junk
 Thumbs.db
-.DS_Store
+.DS_Storenode_modules/
+dist/
+build/
+paypal-config.json
+.idea/

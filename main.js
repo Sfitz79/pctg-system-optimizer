@@ -6,7 +6,8 @@ const crypto = require('crypto');
 const os = require('os');
 const { spawn, exec } = require('child_process');
 
-const VALIDATION_API = 'https://yourdomain.com/api/validate';
+const VALIDATION_API = 'https://pctgopt.pctechguyonline.com/api/validate';
+const UPDATE_MANIFEST = 'https://pctg-system-optimizer.vercel.app/updates/latest.json';
 
 if (process.platform === 'win32' && !process.argv.includes('--elevated')) {
   const result = require('child_process').spawnSync('powershell.exe', [
@@ -108,10 +109,36 @@ function paypalRequest(method, path, body) {
   });
 }
 
+/*
+ * TIERS - these MUST match api/shop-order.js exactly.
+ *
+ * They did not, and the mismatch meant the shop could sell a product the app refused.
+ * The app knew only basic/full/pro. The website sold pro/standard/repair + five modules.
+ * So a customer who paid GBP 30 for Standard received a licence whose tier the app did
+ * not recognise, hasAccess() looked up TIERS['standard'], found undefined, and denied
+ * EVERY phase - they would have paid and been handed nothing that worked.
+ *
+ * The website is the source of truth because that is where the price is advertised and
+ * charged. `node scripts/check-tier-parity.mjs` fails the build if these drift again.
+ */
 const TIERS = {
-  basic: { price: 25, unlocks: ['cleanup', 'performance', 'final', 'restore', 'registry', 'disk', 'repair'] },
-  full: { price: 40, unlocks: ['cleanup', 'performance', 'final', 'restore', 'registry', 'disk', 'fps', 'security', 'gpu-nvidia', 'gpu-amd', 'gpu-intel', 'repair'] },
-  pro: { price: 55, unlocks: ['cleanup', 'performance', 'final', 'pro', 'fps', 'security', 'internet', 'winfix', 'master', 'restore', 'registry', 'disk', 'deep', 'gpu-nvidia', 'gpu-amd', 'gpu-intel', 'repair'] }
+  pro: {
+    label: 'PCTG Optimizer Pro', price: 50,
+    unlocks: ['cleanup', 'performance', 'final', 'pro', 'fps', 'security', 'internet', 'winfix', 'master', 'restore', 'registry', 'disk', 'deep', 'gpu-nvidia', 'gpu-amd', 'gpu-intel', 'repair', 'uninstaller', 'duplicates', 'contextmenu']
+  },
+  standard: {
+    label: 'PCTG Optimizer Standard', price: 30,
+    unlocks: ['cleanup', 'performance', 'final', 'restore', 'registry', 'disk', 'fps', 'security', 'gpu-nvidia', 'gpu-amd', 'gpu-intel', 'repair', 'uninstaller']
+  },
+  repair: {
+    label: 'System Test & Repair', price: 25,
+    unlocks: ['repair', 'restore']
+  },
+  fps: { label: 'FPS Booster module', price: 10, unlocks: ['fps', 'gpu-nvidia', 'gpu-amd', 'gpu-intel'] },
+  security: { label: 'Security module', price: 10, unlocks: ['security'] },
+  internet: { label: 'Internet / WiFi module', price: 10, unlocks: ['internet'] },
+  winfix: { label: '1-Click WinFix module', price: 10, unlocks: ['winfix'] },
+  deep: { label: 'Deep Optimize module', price: 10, unlocks: ['deep'] }
 };
 
 let mainWindow;
@@ -252,7 +279,7 @@ app.on('window-all-closed', () => {
 });
 
 function checkForUpdates(callback) {
-  https.get("https://yourdomain.com/updates/latest.json", (res) => {
+  const req = https.get(UPDATE_MANIFEST, (res) => {
     let data = "";
     res.on("data", chunk => data += chunk);
     res.on("end", () => {
@@ -264,11 +291,17 @@ function checkForUpdates(callback) {
         callback(e);
       }
     });
-  }).on("error", err => callback(err));
+  });
+  req.on("error", err => callback(err));
+  req.setTimeout(10000, () => { req.destroy(new Error('Update check timed out')); });
 }
 
 function hasAccess(phase) {
-  if (activeTier === 'admin') return true;
+  // The 'admin' short-circuit that used to sit here has been REMOVED.
+  // It bypassed TIERS entirely, and activeTier used to be read straight off a local
+  // license.json - so writing {"tier":"admin"} into that file granted every phase in the
+  // app. There is no longer any path that sets 'admin': SPECIAL_KEYS is gone and the
+  // tier now comes from the server. Fail closed.
   if (!activeTier || !TIERS[activeTier]) return false;
   return TIERS[activeTier].unlocks.includes(phase);
 }
@@ -335,62 +368,122 @@ ipcMain.handle("pctg:check-update", () => {
   });
 });
 
+/*
+ * OFFLINE GRACE WINDOW.
+ *
+ * A paying customer must not be locked out because their broadband dropped, so a
+ * licence stays usable for this long after the server last confirmed it. Without it,
+ * checking online on every launch would mean a flaky connection costs someone their
+ * access - which is exactly the kind of failure that produces a chargeback.
+ *
+ * It is NOT a licence-validity mechanism. A forged license.json has no
+ * serverVerifiedAt, so it falls outside the window immediately and fails closed.
+ */
+const LICENSE_GRACE_DAYS = 7;
+
+function writeLicense(data) {
+  fs.writeFileSync(licensePath, JSON.stringify(data));
+}
+
 ipcMain.handle('pctg:check-license', async () => {
+  let local = null;
   try {
-    const local = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-    if (!local.key || !local.activated) return { valid: false, tier: null };
+    local = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
+  } catch {
+    local = null;
+  }
+  if (!local || !local.key || !local.activated) {
+    activeTier = null;
+    return { valid: false, tier: null };
+  }
 
-    const currentId = getMachineId();
-    if (local.machineId !== currentId) {
-      return { valid: false, tier: null };
-    }
+  const currentId = getMachineId();
+  if (local.machineId !== currentId) {
+    // The licence file was copied from another machine. The server is the authority on
+    // this too, but refusing locally avoids a pointless round trip.
+    activeTier = null;
+    return { valid: false, tier: null, reason: 'hardware-mismatch' };
+  }
 
-    // For non-special keys, verify the verification file
-    const isSpecial = Object.keys(SPECIAL_KEYS).some(k => k.toLowerCase() === (local.key || '').toLowerCase());
-    if (!isSpecial) {
-      try {
-        const verifyPath = path.join(userDataPath, 'verify', 'pctg.verify');
-        const verifyData = JSON.parse(fs.readFileSync(verifyPath, 'utf-8'));
-        const expectedHash = crypto.createHash('sha256').update(local.key + '|' + currentId).digest('hex');
-        if (verifyData.hash !== expectedHash) {
-          return { valid: false, tier: null };
-        }
-      } catch {
-        return { valid: false, tier: null };
+  /*
+   * THE SERVER IS THE AUTHORITY.
+   *
+   * This used to read local files only, so the licence was exactly as strong as a JSON
+   * file on disk. It now asks /api/validate, which checks Postgres and applies the
+   * first-activation binding, on every launch.
+   */
+  const result = await validateLicenseOnline(local.key, currentId);
+
+  // null = could not reach the server (offline, DNS, TLS, timeout).
+  // temporary:true = the server answered but its store is unavailable.
+  // Anything else with active:false is an authoritative refusal: unknown, revoked, or
+  // bound to a different machine.
+  const offline = !result || result.temporary === true;
+
+  if (offline) {
+    const lastVerified = Number(local.serverVerifiedAt || 0);
+    const ageDays = lastVerified ? (Date.now() - lastVerified) / 86400000 : Infinity;
+    if (ageDays <= LICENSE_GRACE_DAYS) {
+      if (!TIERS[local.tier]) {
+        activeTier = null;
+        return { valid: false, tier: null, reason: 'unknown-tier' };
       }
+      activeTier = local.tier;
+      return { valid: true, tier: activeTier, offline: true, graceDaysLeft: Math.ceil(LICENSE_GRACE_DAYS - ageDays) };
     }
+    activeTier = null;
+    return {
+      valid: false,
+      tier: null,
+      reason: lastVerified ? 'grace-expired' : 'never-verified',
+      message: lastVerified
+        ? 'Could not reach the licence server and your offline grace period has expired. Connect to the internet and try again.'
+        : 'Could not reach the licence server. Connect to the internet once to verify this licence.'
+    };
+  }
 
-    activeTier = local.tier || 'basic';
-    return { valid: true, tier: activeTier };
-  } catch {}
-  activeTier = null;
-  return { valid: false, tier: null };
+  if (!result.active) {
+    activeTier = null;
+    return { valid: false, tier: null, reason: result.reason || 'rejected', message: result.message };
+  }
+
+  // Authoritative success - record it so the offline window has a starting point.
+  writeLicense({ ...local, tier: result.tier, serverVerifiedAt: Date.now() });
+  activeTier = result.tier;
+  return { valid: true, tier: result.tier, offline: false };
 });
-
-const SPECIAL_KEYS = {
-  'ihavethegamersedge': { tier: 'pro' }
-};
 
 ipcMain.handle('pctg:activate-license', async (event, key) => {
   try {
     const trimmed = (key || '').trim();
     if (!trimmed) return { success: false, tier: null };
 
-    const special = SPECIAL_KEYS[trimmed.toLowerCase()];
-    if (special) {
-      const machineId = getMachineId();
-      const licenseData = { key: trimmed, tier: special.tier, activated: true, machineId, activatedAt: Date.now() };
-      fs.writeFileSync(licensePath, JSON.stringify(licenseData));
-      activeTier = special.tier;
-      return { success: true, tier: special.tier };
-    }
-
+    /*
+     * SPECIAL_KEYS is GONE.
+     *
+     * It contained 'ihavethegamersedge' -> pro, and activated it without ever
+     * contacting the server. Revoking that key in Postgres did nothing, because this
+     * path never asked Postgres. It was a free Pro licence compiled into every copy of
+     * the app, readable by anyone who opened the packaged JavaScript.
+     *
+     * Every licence now comes from the server, which checks the database and binds the
+     * key to this machine on first activation.
+     */
     const machineId = getMachineId();
 
     const result = await validateLicenseOnline(trimmed, machineId);
     if (result && result.active) {
-      const licenseData = { key: trimmed, tier: result.tier, activated: true, machineId, activatedAt: Date.now() };
-      fs.writeFileSync(licensePath, JSON.stringify(licenseData));
+      if (!TIERS[result.tier]) {
+        return { success: false, tier: null, message: `Licence tier "${result.tier}" is not recognised by this version. Please update the app.` };
+      }
+      writeLicense({
+        key: trimmed,
+        tier: result.tier,
+        activated: true,
+        machineId,
+        activatedAt: Date.now(),
+        serverVerifiedAt: Date.now()
+      });
       activeTier = result.tier;
       return { success: true, tier: result.tier };
     }
@@ -399,14 +492,29 @@ ipcMain.handle('pctg:activate-license', async (event, key) => {
       return { success: false, tier: null, message: result.message || 'Invalid license key.' };
     }
 
-    try {
-      const local = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-      if (local.key === trimmed && local.activated && local.machineId === machineId) {
-        activeTier = local.tier || 'basic';
-        return { success: true, tier: activeTier };
-      }
-    } catch {}
+    /*
+     * OFFLINE FALLBACK.
+     *
+     * Only reached when the server could not be reached at all (result === null). It
+     * requires a licence the SERVER has previously confirmed - `serverVerifiedAt` must
+     * exist and be inside the grace window - because otherwise this would accept any
+     * file a user happened to have written into license.json.
+     *
+     * It also no longer defaults to 'basic': that tier does not exist any more, and a
+     * silent default to an unknown tier is exactly how a paid customer ends up with a
+     * licence that unlocks nothing.
+     */
     if (result === null) {
+      try {
+        const local = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
+        const lastVerified = Number(local.serverVerifiedAt || 0);
+        const ageDays = lastVerified ? (Date.now() - lastVerified) / 86400000 : Infinity;
+        const knownTier = local.tier && TIERS[local.tier];
+        if (local.key === trimmed && local.activated && local.machineId === machineId && knownTier && ageDays <= LICENSE_GRACE_DAYS) {
+          activeTier = local.tier;
+          return { success: true, tier: activeTier, offline: true, graceDaysLeft: Math.ceil(LICENSE_GRACE_DAYS - ageDays) };
+        }
+      } catch {}
       return { success: false, tier: null, message: 'Unable to reach activation server. Check your internet connection and try again.' };
     }
     return { success: false, tier: null, message: 'Invalid license key.' };
@@ -430,86 +538,53 @@ ipcMain.handle('pctg:get-purchase-url', () => {
   return PAYPAL_URL;
 });
 
-ipcMain.handle('pctg:paypal-create-order', async (event, { tier }) => {
-  try {
-    if (!tier || !TIERS[tier]) return { success: false, message: 'Invalid tier.' };
-    if (!paypalConfig.clientId || !paypalConfig.secret) return { success: false, message: 'PayPal not configured. Contact support.' };
-    const order = await paypalRequest('POST', '/v2/checkout/orders', {
-      intent: 'CAPTURE',
-      purchase_units: [{
-        description: 'PCTG Optimizer Pro - ' + tier.charAt(0).toUpperCase() + tier.slice(1),
-        amount: { currency_code: paypalConfig.currency, value: TIERS[tier].price.toString() }
-      }],
-      application_context: { brand_name: 'PCTG Optimizer Pro', shipping_preference: 'NO_SHIPPING' }
-    });
-    if (order.id) {
-      const approveLink = (order.links || []).find(l => l.rel === 'payer-action');
-      return { success: true, orderId: order.id, approveUrl: approveLink ? approveLink.href : null };
-    }
-    return { success: false, message: order.message || 'Failed to create PayPal order.' };
-  } catch (e) {
-    return { success: false, message: 'PayPal error: ' + e.message };
+/*
+ * IN-APP PURCHASE HAS BEEN REMOVED. Buying now hands off to the website checkout.
+ *
+ * Three independent reasons, any one of which is enough:
+ *
+ * 1. It could never work in a release. build.js writes a PLACEHOLDER paypal-config.json
+ *    when the real one is absent (and it is deliberately gitignored), so the shipped app
+ *    had credentials that authenticate against nobody.
+ * 2. Making it work would mean shipping your LIVE PayPal client secret inside an
+ *    executable that customers download. Anyone could extract it and create or capture
+ *    orders on your account. That is not an acceptable trade for a GBP 10 module.
+ * 3. It minted licence keys locally with sha256(machineId|tier|orderId). Those keys were
+ *    never written to the server database, so they would fail validation - the customer
+ *    would pay in-app and receive a key the product rejects.
+ *
+ * The website checkout does all of this correctly: PayPal credentials stay on the
+ * server, the capture is verified against PayPal, and the key is written to Postgres.
+ * One purchase path means one thing to get right.
+ */
+ipcMain.handle('pctg:begin-purchase', async (event, { tier } = {}) => {
+  const base = 'https://pctgopt.pctechguyonline.com';
+  if (tier && TIERS[tier]) {
+    return { success: true, url: base + '/#pricing', tier, price: TIERS[tier].price };
   }
+  return { success: true, url: base + '/#pricing' };
 });
 
-ipcMain.handle('pctg:paypal-capture-order', async (event, { orderId, tier }) => {
-  try {
-    if (!orderId || !tier) return { success: false, message: 'Missing order data.' };
-    const capture = await paypalRequest('POST', '/v2/checkout/orders/' + orderId + '/capture');
-    if (capture.status === 'COMPLETED' || (capture.purchase_units && capture.purchase_units[0].payments.captures)) {
-      // Payment confirmed — generate activation key
-      const machineId = getMachineId();
-      const receipt = capture.id || orderId;
-      const raw = machineId + '|' + tier + '|' + receipt;
-      const generatedKey = crypto.createHash('sha256').update(raw).digest('hex').toUpperCase().slice(0, 32);
-      const licenseData = { key: generatedKey, tier, activated: true, machineId, receipt, activatedAt: Date.now() };
-      fs.writeFileSync(licensePath, JSON.stringify(licenseData));
-      const verifyDir = path.join(userDataPath, 'verify');
-      fs.mkdirSync(verifyDir, { recursive: true });
-      const verifyHash = crypto.createHash('sha256').update(generatedKey + '|' + machineId).digest('hex');
-      fs.writeFileSync(path.join(verifyDir, 'pctg.verify'), JSON.stringify({ hash: verifyHash, receipt, tier, generated: Date.now() }));
-      activeTier = tier;
-      return { success: true, key: generatedKey, tier };
-    }
-    return { success: false, message: 'Payment not completed. Status: ' + (capture.status || 'unknown') };
-  } catch (e) {
-    return { success: false, message: 'Capture error: ' + e.message };
-  }
-});
-
-ipcMain.handle('pctg:generate-key', async (event, { receipt, tier }) => {
-  try {
-    const trimmed = (receipt || '').trim();
-    if (!trimmed || trimmed.length < 8) {
-      return { success: false, message: 'Please enter a valid PayPal receipt/transaction ID (at least 8 characters).' };
-    }
-    if (!tier || !TIERS[tier]) {
-      return { success: false, message: 'Invalid tier selected.' };
-    }
-    const machineId = getMachineId();
-    const raw = machineId + '|' + tier + '|' + trimmed.toUpperCase();
-    const generatedKey = crypto.createHash('sha256').update(raw).digest('hex').toUpperCase().slice(0, 32);
-    const licenseData = {
-      key: generatedKey,
-      tier,
-      activated: true,
-      machineId,
-      receipt: trimmed,
-      activatedAt: Date.now()
-    };
-    fs.writeFileSync(licensePath, JSON.stringify(licenseData));
-    const verifyDir = path.join(userDataPath, 'verify');
-    fs.mkdirSync(verifyDir, { recursive: true });
-    const verifyHash = crypto.createHash('sha256').update(generatedKey + '|' + machineId).digest('hex');
-    fs.writeFileSync(path.join(verifyDir, 'pctg.verify'), JSON.stringify({ hash: verifyHash, receipt: trimmed, tier, generated: Date.now() }));
-    activeTier = tier;
-    return { success: true, key: generatedKey, tier };
-  } catch (e) {
-    return { success: false, message: 'Failed to generate license: ' + e.message };
-  }
-});
+/*
+ * pctg:generate-key has been DELETED.
+ *
+ * It was reachable from the UI as "Manual key generation from PayPal receipt (fallback)".
+ * It accepted ANY string of 8+ characters as a "receipt", never verified it against
+ * PayPal, never contacted the server, and wrote a working licence to disk at whatever
+ * tier was selected. It was not a fallback - it was a self-service Pro licence with a
+ * text box in front of it.
+ *
+ * The only routes to a licence are now: the server /api/validate (which checks Postgres,
+ * and binds the key to the machine), and the in-app PayPal capture below, which proves a
+ * real payment before issuing anything.
+ */
 
 ipcMain.handle('pctg:run-toggle', async (event, { key, enabled }) => {
+  // `deep` is a paid module. This handler ran deep.ps1 with NO licence check, so it was
+  // an ungated route to a Pro-only system change. Gated like every other phase.
+  if (!hasAccess('deep')) {
+    throw new Error(`Your license does not include "deep". Purchase the Deep Optimize module at ${PAYPAL_URL}`);
+  }
   const scriptsDir = ensureScriptsExtracted();
   const scriptPath = path.join(scriptsDir, 'deep.ps1');
   const toggleArg = enabled ? "1" : "0";
@@ -543,9 +618,10 @@ ipcMain.handle('pctg:get-system-analysis', () => {
 });
 
 ipcMain.handle('pctg:apply-custom-tweaks', async (event, script) => {
-  if (activeTier !== 'full' && activeTier !== 'pro' && activeTier !== 'admin') {
-    return { success: false, error: 'Custom gaming optimizations require Full or Pro Gaming tier.' };
-  }
+    // Custom gaming tweaks are a Pro-only feature. 'full' no longer exists as a tier.
+    if (activeTier !== 'pro') {
+      return { success: false, error: 'Custom gaming optimizations require the Pro Gaming tier.' };
+    }
   return applyOptimizations(script);
 });
 
@@ -560,7 +636,7 @@ ipcMain.handle("pctg:download-update", (event, latest) => {
   const updatePath = path.join(userDataPath, "update.exe");
   const file = fs.createWriteStream(updatePath);
 
-  https.get(latest.url, (response) => {
+  const req = https.get(latest.url, (response) => {
     response.pipe(file);
     file.on("finish", () => {
       file.close(() => {
@@ -570,6 +646,7 @@ ipcMain.handle("pctg:download-update", (event, latest) => {
       });
     });
   });
+  req.setTimeout(120000, () => { req.destroy(new Error('Update download timed out')); });
 });
 
 const { generateReport } = require('./report/report');
@@ -649,7 +726,7 @@ function getDiskInfo() {
 function getGpuInfo() {
   try {
     const out = require('child_process').execSync(
-      'powershell -Command "Get-WmiObject Win32_VideoController | Select-Object -First 1 Name | ConvertTo-Json"',
+      'powershell -Command "Get-CimInstance Win32_VideoController | Where-Object { $_.Name -notmatch \'Parsec|Microsoft Basic|Remote Display|Virtual|Hyper-V|RDP\' } | Select-Object -First 1 Name | ConvertTo-Json"',
       { encoding: 'utf-8', timeout: 5000 }
     );
     const info = JSON.parse(out.trim());
@@ -881,7 +958,10 @@ ipcMain.handle('pctg:run-phase', async (event, phase) => {
     'disk': 'disk.ps1',
     'deep': 'deep.ps1',
     'master': 'master.ps1',
-    'repair': 'repair.ps1'
+    'repair': 'repair.ps1',
+    'uninstaller': 'uninstaller.ps1',
+    'duplicates': 'duplicates.ps1',
+    'contextmenu': 'contextmenu.ps1'
   };
   const gpuPhases = { 'gpu-nvidia': 'nvidia', 'gpu-amd': 'amd', 'gpu-intel': 'intel' };
   const labels = {
@@ -899,6 +979,9 @@ ipcMain.handle('pctg:run-phase', async (event, phase) => {
     'deep': 'Windows Deep Optimization',
     'master': 'PCTG System Master — Ultimate Repair & Speedup',
     'repair': 'System Test & Repair',
+    'uninstaller': 'Software Uninstaller',
+    'duplicates': 'Duplicate File Finder',
+    'contextmenu': 'Context Menu Manager',
     'gpu-nvidia': 'NVIDIA GPU Tweaks',
     'gpu-amd': 'AMD GPU Tweaks',
     'gpu-intel': 'Intel GPU Tweaks'
@@ -913,7 +996,7 @@ ipcMain.handle('pctg:run-phase', async (event, phase) => {
   const result = await runPs(script, labels[phase] || phase);
 
   // Apply custom hardware-specific gaming optimizations for Full/Pro tiers
-  if (phase === 'fps' && (activeTier === 'full' || activeTier === 'pro' || activeTier === 'admin')) {
+  if (phase === 'fps' && activeTier === 'pro') {
     try {
       const cached = getCachedAnalysis();
       if (cached && cached.script) {

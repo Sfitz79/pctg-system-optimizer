@@ -227,7 +227,7 @@ async function checkLicense() {
       setTimeout(() => runAllBenchmarks('Initial Baseline Benchmark (Before)'), 1000);
     }
     // Auto-analyze system for Full/Pro tiers in background
-    if (activeTier === 'full' || activeTier === 'pro' || activeTier === 'admin') {
+    if (activeTier === 'pro' || activeTier === 'standard') {
       window.pctg.analyzeSystem().then(analysis => {
         if (analysis && analysis.commandsCount > 0) {
           console.log('[PCTG AI] System analyzed: ' + analysis.specs.cpu.model + ' | ' + analysis.specs.gpu.model + ' | ' + analysis.specs.ram.totalGB + 'GB RAM | ' + analysis.commandsCount + ' custom optimizations ready');
@@ -259,103 +259,36 @@ document.getElementById("license-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("activate-btn").click();
 });
 
-document.getElementById("receipt-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") document.getElementById("btn-generate-key").click();
-});
-
-// ======== PayPal Purchase Flow ========
-let pendingPayPalOrder = null;
-
+/*
+ * PURCHASE = HAND OFF TO THE WEBSITE CHECKOUT.
+ *
+ * The in-app PayPal flow and the "generate key from a receipt" box are gone.
+ * The receipt box accepted any 8+ characters and issued a working licence without
+ * verifying a payment - a self-service Pro licence. The in-app PayPal path could not
+ * work in a release anyway (placeholder credentials), would have required shipping a
+ * live PayPal secret inside the app, and minted keys the server had never issued.
+ *
+ * Payment now happens at pctgopt.pctechguyonline.com, where PayPal verifies the money
+ * and the key is written to Postgres. The customer pastes that key in the box above.
+ */
 document.getElementById('btn-pay-paypal').onclick = async () => {
   const tier = document.getElementById('purchase-tier-select').value;
   const statusEl = document.getElementById('paypal-status');
-  const actionsEl = document.getElementById('paypal-actions');
-  const completeBtn = document.getElementById('btn-paypal-complete');
   statusEl.style.color = '#aaa';
-  statusEl.textContent = 'Creating PayPal order...';
-  document.getElementById('btn-pay-paypal').disabled = true;
+  statusEl.textContent = 'Opening secure checkout...';
   try {
-    const result = await window.pctg.paypalCreateOrder({ tier });
-    if (result.success && result.approveUrl) {
-      pendingPayPalOrder = { orderId: result.orderId, tier };
-      statusEl.innerHTML = 'Order created. Complete payment in your browser, then click "Verify &amp; Generate Key" below.';
-      actionsEl.style.display = 'flex';
-      completeBtn.textContent = 'I\'ve Paid - Verify & Generate Key';
-      completeBtn.disabled = false;
-      window.pctg.openUrl(result.approveUrl);
+    const result = await window.pctg.beginPurchase({ tier });
+    if (result.success && result.url) {
+      window.pctg.openUrl(result.url);
+      statusEl.innerHTML = 'Checkout opened in your browser. Pay there, then paste the licence key you are given into the box above.';
     } else {
       statusEl.style.color = '#ff4444';
-      statusEl.textContent = result.message || 'Failed to create order.';
+      statusEl.textContent = 'Could not open checkout. Visit pctgopt.pctechguyonline.com';
     }
   } catch (e) {
     statusEl.style.color = '#ff4444';
     statusEl.textContent = 'Error: ' + e.message;
   }
-  document.getElementById('btn-pay-paypal').disabled = false;
-};
-
-document.getElementById('btn-paypal-complete').onclick = async () => {
-  if (!pendingPayPalOrder) return;
-  const statusEl = document.getElementById('paypal-status');
-  const completeBtn = document.getElementById('btn-paypal-complete');
-  statusEl.textContent = 'Verifying payment and generating key...';
-  statusEl.style.color = '#aaa';
-  completeBtn.disabled = true;
-  try {
-    const result = await window.pctg.paypalCaptureOrder({ orderId: pendingPayPalOrder.orderId, tier: pendingPayPalOrder.tier });
-    if (result.success) {
-      statusEl.innerHTML = '<span style="color:#FF3333">Payment confirmed! Key generated: <strong>' + result.key + '</strong></span>';
-      document.getElementById('paypal-actions').style.display = 'none';
-      document.getElementById('license-input').value = result.key;
-      document.getElementById('activate-btn').click();
-      pendingPayPalOrder = null;
-    } else {
-      statusEl.style.color = '#ff4444';
-      statusEl.textContent = result.message || 'Verification failed. Try again or use your receipt ID below.';
-      completeBtn.disabled = false;
-    }
-  } catch (e) {
-    statusEl.style.color = '#ff4444';
-    statusEl.textContent = 'Error: ' + e.message;
-    completeBtn.disabled = false;
-  }
-};
-
-document.getElementById('btn-paypal-cancel').onclick = () => {
-  pendingPayPalOrder = null;
-  document.getElementById('paypal-actions').style.display = 'none';
-  document.getElementById('paypal-status').textContent = 'Cancelled.';
-  document.getElementById('paypal-status').style.color = '#888';
-};
-
-// Manual key generation from PayPal receipt (fallback)
-document.getElementById('btn-generate-key').onclick = async () => {
-  const receipt = document.getElementById('receipt-input').value.trim();
-  const tier = document.getElementById('purchase-tier-select').value;
-  const resultEl = document.getElementById('purchase-result');
-  if (!receipt) {
-    resultEl.style.color = '#ff4444';
-    resultEl.textContent = 'Enter your PayPal transaction ID.';
-    return;
-  }
-  resultEl.textContent = 'Generating activation key...';
-  resultEl.style.color = '#aaa';
-  document.getElementById('btn-generate-key').disabled = true;
-  try {
-    const result = await window.pctg.generateKey({ receipt, tier });
-    if (result.success) {
-      resultEl.innerHTML = '<span style="color:#FF3333">Key generated: <strong>' + result.key + '</strong><br/>Copy this key and use it below to activate. Write it down &mdash; lost keys cannot be recovered.</span>';
-      document.getElementById('license-input').value = result.key;
-      document.getElementById('activate-btn').click();
-    } else {
-      resultEl.style.color = '#ff4444';
-      resultEl.textContent = result.message || 'Generation failed.';
-    }
-  } catch (e) {
-    resultEl.style.color = '#ff4444';
-    resultEl.textContent = 'Error: ' + e.message;
-  }
-  document.getElementById('btn-generate-key').disabled = false;
 };
 
 // ======== Optimizer ========
@@ -421,6 +354,9 @@ function initOptimizer() {
     security: 'WiFi Optimization',
     master: 'PCTG System Master',
     repair: 'System Test & Repair',
+    uninstaller: 'Software Uninstaller',
+    duplicates: 'Duplicate File Finder',
+    contextmenu: 'Context Menu Manager',
     'gpu-nvidia': 'NVIDIA GPU Tweaks',
     'gpu-amd': 'AMD GPU Tweaks',
     'gpu-intel': 'Intel GPU Tweaks'
@@ -452,7 +388,7 @@ function initOptimizer() {
       btn.style.opacity = '1';
     });
   });
-  // Start Smart Optimize (runs the 3 core phases)
+  // Start One-Click Optimisation (runs the 3 core phases)
   const btnStart = document.getElementById('start-optimize');
   if (btnStart) {
     btnStart.onclick = async () => {
@@ -462,7 +398,7 @@ function initOptimizer() {
       await runPhase('performance', 'Phase 2 \u2014 Performance Boost');
       await runPhase('final', 'Phase 3 \u2014 Final Sweep');
       btnStart.disabled = false;
-      btnStart.textContent = 'Start Smart Optimize';
+      btnStart.textContent = 'Start One-Click Optimisation';
     };
   }
   // Export PDF
@@ -553,7 +489,7 @@ document.addEventListener('scroll', resetInactivityTimer);
 function showTierBadge() {
   const badge = document.getElementById('tier-badge');
   if (badge && activeTier) {
-    const names = { admin: 'Admin', basic: 'Basic', full: 'Full', pro: 'Pro Gaming' };
+    const names = { pro: 'Pro Gaming', standard: 'Standard', repair: 'Test & Repair', fps: 'FPS Booster', security: 'Security', internet: 'Internet / WiFi', winfix: 'WinFix', deep: 'Deep Optimize' };
     badge.textContent = names[activeTier] || activeTier;
     badge.style.display = 'inline';
   }
