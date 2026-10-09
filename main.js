@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const os = require('os');
 const { spawn, exec } = require('child_process');
 
-import { checkInternalUnlock } from './lib/internalUnlock.js';
+const { checkInternalUnlock } = require('./lib/internalUnlock.js');
 
 const VALIDATION_API = 'https://pctgopt.pctechguyonline.com/api/validate';
 const UPDATE_MANIFEST = 'https://pctg-system-optimizer.vercel.app/updates/latest.json';
@@ -271,6 +271,7 @@ function createWindow() {
   });
 
   win.maximize();
+  if (IS_ADMIN) win.setTitle(PRODUCT_NAME + '  -  ADMIN BUILD (not for customer distribution)');
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   mainWindow = win;
 }
@@ -471,6 +472,25 @@ ipcMain.handle('pctg:check-license', async () => {
     // this too, but refusing locally avoids a pointless round trip.
     activeTier = null;
     return { valid: false, tier: null, reason: 'hardware-mismatch' };
+  }
+
+  /*
+   * INTERNAL CAPTURE LICENCE - honoured ONLY while the override is present.
+   *
+   * The unlock wrote an `internal: true` licence that the server has never seen, so
+   * the normal server check below rejects it as unknown and throws the Boss straight
+   * back to the licence screen. Hence this branch.
+   *
+   * It is gated on the environment variable as well as the flag, so a hand-edited
+   * license.json containing "internal": true achieves nothing on a normal install -
+   * without PCTG_INTERNAL_UNLOCK in the environment this branch is unreachable and
+   * the server remains the only authority.
+   */
+  if (local.internal === true && internalUnlockEnabled()) {
+    activeTier = TIERS[local.tier] ? local.tier : 'pro';
+    if (!activeTier) { activeTier = null; return { valid: false, tier: null, reason: 'unknown-tier' }; }
+    startupLog('check-license: internal capture licence accepted, tier=' + activeTier);
+    return { valid: true, tier: activeTier, internal: true };
   }
 
   /*

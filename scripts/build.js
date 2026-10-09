@@ -130,10 +130,39 @@ async function main() {
   fs.cpSync(tempExtractDir, appDir, { recursive: true });
   fs.rmSync(tempExtractDir, { recursive: true });
 
-  console.log('7. Creating app.asar...');
-  const asar = require('@electron/asar');
-  const asarPath = path.join(resourcesDir, 'app.asar');
-  await asar.createPackage(buildDir, asarPath);
+console.log('7. Creating app.asar...');
+const asar = require('@electron/asar');
+const asarPath = path.join(resourcesDir, 'app.asar');
+
+/*
+ * BAKE THE BUILD VARIANT IN.
+ *
+ * PCTG_BUILD=admin produces the Admin Edition (Pro available without a licence,
+ * separate product name). Anything else - including every production release -
+ * produces the locked public build. The release script never passes admin, so a
+ * customer build cannot become an admin build by accident.
+ */
+const buildEdition = process.env.PCTG_BUILD === 'admin' ? 'admin' : 'public';
+const variantFile = path.join(buildDir, 'build-variant.json');
+fs.writeFileSync(variantFile, JSON.stringify({
+  edition: buildEdition,
+  builtAt: new Date().toISOString(),
+}, null, 2));
+
+// The app.asar must contain build-variant.json, which is written at the build root,
+// so it needs to exist inside buildDir before packing. It does - this is buildDir.
+if (buildEdition === 'admin') {
+  const pkgPath = path.join(buildDir, 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  pkg.name = 'pctg-optimizer-admin';
+  pkg.productName = 'PCTG Optimizer Admin Edition';
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+  console.log(`   ADMIN EDITION - Pro unlocked, separate app id (${pkg.name})`);
+} else {
+  console.log('   public edition - locked, licences come from the server only');
+}
+
+await asar.createPackage(buildDir, asarPath);
 
   fs.writeFileSync(path.join(resourcesDir, 'app'), pkg.version);
 
