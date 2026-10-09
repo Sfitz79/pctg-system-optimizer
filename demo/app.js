@@ -68,6 +68,7 @@
   function newRunId() { return 'PCTG-' + String(++runId).padStart(4, '0') + '-' + Date.now().toString(16).toUpperCase(); }
 
   /* ============ NAV ============ */
+  var views = null;
   var VIEWS = ['dashboard', 'optimise', 'modules', 'benchmark', 'restore', 'licences', 'settings'];
   var TITLES = {
     dashboard: 'Dashboard',
@@ -85,7 +86,7 @@
     });
     $$('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
     $('#page-title').textContent = TITLES[view];
-    render[view]();
+    views[view]();
     if (location.hash !== '#' + view) {
       try { history.replaceState(null, '', '#' + view); } catch (e) { /* hash is cosmetic */ }
     }
@@ -473,7 +474,7 @@
   }
 
   function boot() {
-    var r = render();
+    views = render();
 
     $$('.nav-item').forEach(function (b) {
       b.addEventListener('click', function () { go(b.dataset.view); });
