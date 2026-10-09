@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const os = require('os');
 const { spawn, exec } = require('child_process');
 
+import { checkInternalUnlock } from './lib/internalUnlock.js';
+
 const VALIDATION_API = 'https://pctgopt.pctechguyonline.com/api/validate';
 const UPDATE_MANIFEST = 'https://pctg-system-optimizer.vercel.app/updates/latest.json';
 
@@ -459,9 +461,35 @@ ipcMain.handle('pctg:activate-license', async (event, key) => {
     if (!trimmed) return { success: false, tier: null };
 
     /*
+     * INTERNAL CAPTURE UNLOCK - for screenshot / video capture of the Pro UI.
+     *
+     * Only active when PCTG_INTERNAL_UNLOCK is set in THIS process's environment.
+     * It is not set in the released installer, so a customer's copy ignores the
+     * password completely and every licence comes from the server.
+     *
+     * This replaces the old SPECIAL_KEYS entry, which granted Pro with no server
+     * call in every shipped copy. See lib/internalUnlock.js for why.
+     */
+    const internal = checkInternalUnlock(trimmed);
+    if (internal) {
+      const machineId = getMachineId();
+      writeLicense({
+        key: trimmed,
+        tier: internal.tier,
+        activated: true,
+        machineId,
+        activatedAt: Date.now(),
+        serverVerifiedAt: Date.now(),
+        internal: true,
+      });
+      activeTier = internal.tier;
+      return { success: true, tier: internal.tier, internal: true };
+    }
+
+    /*
      * SPECIAL_KEYS is GONE.
      *
-     * It contained 'ihavethegamersedge' -> pro, and activated it without ever
+     * It contained 'the old capture password' -> pro, and activated it without ever
      * contacting the server. Revoking that key in Postgres did nothing, because this
      * path never asked Postgres. It was a free Pro licence compiled into every copy of
      * the app, readable by anyone who opened the packaged JavaScript.

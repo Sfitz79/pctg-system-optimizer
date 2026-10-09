@@ -15,7 +15,7 @@ const filesToObfuscate = [
   'main.js', 'preload.js', 'app/renderer.js',
   'report/report.js', 'report/systemInfo.js', 'report/system-analyzer.js'
 ];
-const dirsToCopy = ['app', 'scripts', 'license', 'report', 'assets'];
+const dirsToCopy = ['app', 'scripts', 'license', 'report', 'assets', 'lib'];
 const filesToCopy = ['main.js', 'preload.js', 'package.json', 'package-lock.json', 'app.manifest', 'paypal-config.json'];
 
 async function main() {
