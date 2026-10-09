@@ -1,0 +1,36 @@
+name = "pctg-system-optimizer"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+# One Durable Object per licence key.
+#
+# NOT KV: KV is eventually consistent (up to 60s stale reads), so two
+# activations of the same key inside that window would both read "unused" and
+# both bind the same paid licence to two machines. Licence enforcement is a
+# customer promise, and it cannot rest on a stale read. A Durable Object is
+# single-threaded and strongly consistent, so the read-decide-write in
+# src/licence-store.js cannot interleave.
+#
+# The object id IS the licence key, so requests for the same key serialise and
+# different keys never contend. No schema, no transactions.
+[[durable_objects.bindings]]
+name = "LICENCES"
+class_name = "LicenceStore"
+
+# SQLite-backed storage is the current Durable Objects backing store and gives
+# us transactions if the licence record ever grows beyond one key's metadata.
+[[migrations]]
+tag = "v1"
+new_classes = ["LicenceStore"]
+
+# Credentials are set with `wrangler secret put`, never committed here.
+# PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE, SHOP_DEMO
+[vars]
+PAYPAL_MODE = "live"
+
+[env.production.vars]
+PAYPAL_MODE = "live"
+
+# Deliberately NOT enabled anywhere. SHOP_DEMO=1 lets an unauthenticated caller
+# mint a free licence, so it is a per-environment secret set only for local
+# testing and must never be present in production.

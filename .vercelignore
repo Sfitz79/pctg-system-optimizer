@@ -3,3 +3,11 @@ dist/
 .git/
 .idea/
 *.ps1
+
+# Added 2026-09-28 by the portable audit. Without these, every deploy uploads
+# node_modules (tens of thousands of files) and ships .env to the edge.
+# The upload-request limit is the same one that blocked pc-builder today.
+.env
+.env.*
+!.env.example
+node_modules/

@@ -1,10 +1,16 @@
 {
-  "name": "pctg-system optimizer",
+  "name": "pctg-system-optimizer",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "PCTG System Optimizer - licensing, checkout and landing site",
+  "type": "module",
+  "main": "src/licence-core.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test tests/licence-core.test.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler pages deploy landing --project-name pctg-system-optimizer"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
+  }
 }

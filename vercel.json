@@ -2,6 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "api/*.js", "use": "@vercel/node" },
+    { "src": "landing/**", "use": "@vercel/static" },
     { "src": "web/**", "use": "@vercel/static" }
   ],
   "routes": [
@@ -10,7 +11,13 @@
     { "src": "/latest", "dest": "https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/PCTG-Optimizer-Setup.exe", "statusCode": 302 },
     { "src": "/PCTG-Optimizer-Setup.exe", "dest": "https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/PCTG-Optimizer-Setup.exe", "statusCode": 302 },
     { "src": "/pctg-optimizer-portable.zip", "dest": "https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/pctg-optimizer-portable.zip", "statusCode": 302 },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/web/$1" }
+    { "src": "/pctg-optimizer-demo.zip", "dest": "https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/pctg-optimizer-demo.zip", "statusCode": 302 },
+    { "src": "/demo-download", "dest": "/pctg-optimizer-demo.zip", "statusCode": 302 },
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "src": "/updates/latest.json", "dest": "/web/updates/latest.json" },
+    { "src": "/app", "dest": "/web/index.html" },
+    { "src": "/app/(.*)", "dest": "/web/$1" },
+    { "src": "/demo", "dest": "https://pctg-optimizer-demo.vercel.app", "statusCode": 302 },
+    { "src": "/(.*)", "dest": "/landing/$1" }
   ]
 }

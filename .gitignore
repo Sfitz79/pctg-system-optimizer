@@ -1,15 +1,25 @@
-# Vercel local config
-.vercel/
-
-# IDE
-.idea/
-
-# OpenCode agent configs
-.opencode/
-
-# Dependencies and build artifacts
 node_modules/
-dist/
+.env
+.env.*
+!.env.example
+.wrangler/
+*.log
 
-# Standalone Electron app (has its own git repo)
+# --- added 2026-10-09: build output and tooling that must never be committed ---
+# 671 MB of packaged binaries. The release artefacts live on GitHub Releases.
+pctg-optimizer/dist/
+pctg-optimizer/build/
+
+# Real PayPal credentials are deliberately never in the repo (build.js writes a
+# placeholder when this file is absent).
+paypal-config.json
+
+# Local tooling / IDE / deploy state
+.idea/
+.opencode/
+.vercel/
+*.newfeatures
+*.patch
+landing/*.zip
+# The Electron app is its own git repository.
 pctg-optimizer/
