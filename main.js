@@ -162,7 +162,21 @@ function seedDefaults() {
 function initAnalytics() {
   try { return JSON.parse(fs.readFileSync(analyticsPath, 'utf-8')); } catch {}
   const blank = { installs: 1, updates: 0, exports: 0, phases: {}, firstRun: Date.now(), lastRun: Date.now() };
-  fs.writeFileSync(analyticsPath, JSON.stringify(blank));
+  // The write below was NOT guarded, and it runs on every first launch.
+  //
+  // On a fresh Windows install the userData directory does not exist yet, so
+  // writeFileSync throws ENOENT. That throw happened inside
+  // app.whenReady().then(...), which makes it an unhandled rejection, which
+  // terminates the process under modern Node. The result was the packaged app
+  // exiting instantly with no window and nothing on stderr - which is exactly
+  // what it did, every time, and why nobody could see why.
+  try {
+    fs.mkdirSync(path.dirname(analyticsPath), { recursive: true });
+    fs.writeFileSync(analyticsPath, JSON.stringify(blank));
+  } catch (e) {
+    // Analytics is not worth failing a launch over.
+    startupLog('initAnalytics write skipped: ' + (e && e.message ? e.message : e));
+  }
   return blank;
 }
 
@@ -263,17 +277,69 @@ function createWindow() {
 
 
 
+// ---------------------------------------------------------------------------
+// STARTUP DIAGNOSTICS
+//
+// The packaged app was exiting immediately with no window and no error on
+// stderr. An exception thrown inside app.whenReady().then(...) becomes an
+// unhandled rejection, which under modern Node terminates the process - so the
+// app vanished silently and nothing was ever written down.
+//
+// These handlers make startup loud. They write to a file as well as the console
+// because a packaged Windows build's stderr is not always visible.
+// PCTG_STARTUP_LOG=<path> enables the file; the console handlers always run.
+// ---------------------------------------------------------------------------
+const STARTUP_LOG = process.env.PCTG_STARTUP_LOG || '';
+function startupLog(msg) {
+  const line = `[startup ${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  try {
+    if (STARTUP_LOG) require('node:fs').appendFileSync(STARTUP_LOG, line + '\n');
+  } catch {}
+}
+process.on('uncaughtException', (err) => {
+  startupLog('UNCAUGHT EXCEPTION: ' + (err && err.stack ? err.stack : err));
+  try { process.exit(1); } catch {}
+});
+process.on('unhandledRejection', (err) => {
+  startupLog('UNHANDLED REJECTION: ' + (err && err.stack ? err.stack : JSON.stringify(err)));
+});
+
+startupLog('main.js loaded, platform=' + process.platform + ' electron=' + (process.versions.electron || 'n/a'));
+
 app.whenReady().then(() => {
-  seedDefaults();
-  initAnalytics();
-  createWindow();
+  startupLog('app ready');
+  try {
+    seedDefaults();
+    startupLog('seedDefaults ok');
+    initAnalytics();
+    startupLog('initAnalytics ok');
+    createWindow();
+    startupLog('createWindow ok, windows=' + BrowserWindow.getAllWindows().length);
+  } catch (err) {
+    startupLog('STARTUP THREW: ' + (err && err.stack ? err.stack : err));
+    throw err;
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+}).catch((err) => {
+  startupLog('whenReady REJECTED: ' + (err && err.stack ? err.stack : err));
 });
 
 app.on('before-quit', () => {
-  try { if (fs.existsSync(licensePath)) fs.unlinkSync(licensePath); } catch {}
+  /*
+   * THIS DELETED THE LICENCE FILE ON EVERY EXIT.
+   *
+   * It meant a customer had to re-enter their key every single time they closed the
+   * app, despite what the app itself promises on screen: "YOU GET UNLIMITED USAGE
+   * BUT LOST / FORGOTTEN KEYS CANNOT BE RECOVERED". Anything that removes the stored
+   * licence makes the second half of that sentence the everyday experience.
+   *
+   * Nothing needs cleaning up here. The licence is the customer's paid entitlement
+   * and must survive a restart; it is bound to the machine and re-verified against
+   * the server on launch, which is what actually stops copying it.
+   */
 });
 
 app.on('window-all-closed', () => {
