@@ -54,6 +54,43 @@
 
     /* HERO */
     .hero { padding: 84px 0 60px; text-align: center; }
+
+    /* ---- Brand block: official logo, front and centre ---- */
+    .hero-brand { margin-bottom: 34px; }
+    .hero-logo {
+      width: min(420px, 82vw); height: auto; display: block; margin: 0 auto 14px;
+      filter: drop-shadow(0 6px 26px rgba(0, 229, 255, 0.28));
+    }
+    .hero-tagline { width: min(300px, 62vw); height: auto; display: block; margin: 0 auto; opacity: 0.95; }
+
+    /* ---- Two-column showcase: copy left, artwork + video right ---- */
+    .hero-showcase {
+      display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 48px; align-items: center; text-align: left; margin-top: 8px;
+    }
+    .hero-copy .pill { margin-bottom: 18px; }
+    .hero-media { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    /* The source artwork sits left-of-centre with empty space on the right, so it is
+       cropped to the subject rather than shown letterboxed with dead space. */
+    .hero-tower {
+      width: 100%; max-width: 460px; height: auto; display: block;
+      aspect-ratio: 1 / 1; object-fit: cover; object-position: 34% center;
+      border-radius: 18px; border: 1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    }
+    .hero-video {
+      width: 100%; max-width: 460px; border-radius: 14px; display: block;
+      border: 1px solid var(--border); background: #000; aspect-ratio: 16 / 9;
+    }
+    .hero-media figcaption { font-size: 12px; color: var(--muted); }
+
+    /* Stack on narrow screens - two columns at phone width crushes both. */
+    @media (max-width: 900px) {
+      .hero-showcase { grid-template-columns: 1fr; gap: 32px; text-align: center; }
+      .hero-copy .pill { margin-bottom: 16px; }
+      .hero-media { margin-top: 8px; }
+      .hero-tower, .hero-video { max-width: 420px; }
+    }
     .pill {
       display: inline-block; padding: 6px 14px; border: 1px solid var(--border);
       border-radius: 999px; font-size: 13px; color: var(--muted); background: var(--surface);
@@ -228,24 +265,48 @@
 
   <header class="hero">
     <div class="wrap">
-      <span class="pill"><span class="dot">●</span> UK-built · One-time payment · Unlimited use</span>
-      <h1>Make your PC <span class="accent">feel brand new</span> again</h1>
-      <p class="hero-sub">
-        PCTG System Optimizer Pro is the British-built <strong>One-Click Optimisation</strong> suite
-        that <strong>tunes up Windows</strong>, boosts your FPS, clears out the junk, hardens your
-        security and fixes Windows — all in a few clicks. No subscriptions. No bloat.
-        Just a faster, smoother, safer PC.
-      </p>
-      <div class="hero-ctas">
-        <a href="#pricing" class="btn btn-primary">Buy Your Licence</a>
-        <a href="/demo" class="btn btn-demo">▶ Try It Free Online</a>
-        <a href="/demo" class="btn btn-secondary">Open the demo</a>
+      <div class="hero-brand">
+        <img class="hero-logo" src="/assets/pctg-optimizer-pro-logo.webp"
+             alt="PCTG Optimizer Pro" width="420" height="150" fetchpriority="high" decoding="async" />
+        <img class="hero-tagline" src="/assets/get-your-gamers-edge.webp"
+             alt="Get YOUR Gamers Edge" width="300" height="40" loading="lazy" decoding="async" />
       </div>
-      <div class="hero-stats">
-        <div class="stat"><div class="num">20-min</div><div class="lbl">Optimisation protocol</div></div>
-        <div class="stat"><div class="num">14+</div><div class="lbl">Toolkit modules</div></div>
-        <div class="stat"><div class="num">3-phase</div><div class="lbl">Clean → Boost → Sweep</div></div>
-        <div class="stat"><div class="num">✓</div><div class="lbl">Full system restore</div></div>
+
+      <div class="hero-showcase">
+        <div class="hero-copy">
+          <span class="pill"><span class="dot">●</span> UK-built · One-time payment · Unlimited use</span>
+          <h1>Make your PC <span class="accent">feel brand new</span> again</h1>
+          <p class="hero-sub">
+            PCTG System Optimizer Pro is the British-built <strong>One-Click Optimisation</strong> suite
+            that <strong>tunes up Windows</strong>, boosts your FPS, clears out the junk, hardens your
+            security and fixes Windows — all in a few clicks. No subscriptions. No bloat.
+            Just a faster, smoother, safer PC.
+          </p>
+          <div class="hero-ctas">
+            <a href="#pricing" class="btn btn-primary">Buy Your Licence</a>
+            <a href="/demo" class="btn btn-demo">▶ Try It Free Online</a>
+          </div>
+          <div class="hero-stats">
+            <div class="stat"><div class="num">20-min</div><div class="lbl">Optimisation protocol</div></div>
+            <div class="stat"><div class="num">14+</div><div class="lbl">Toolkit modules</div></div>
+            <div class="stat"><div class="num">3-phase</div><div class="lbl">Clean → Boost → Sweep</div></div>
+            <div class="stat"><div class="num">✓</div><div class="lbl">Full system restore</div></div>
+          </div>
+        </div>
+
+        <figure class="hero-media">
+          <img class="hero-tower" src="/assets/pc-tower-energy.webp"
+               alt="A gaming PC tower with teal and blue energy sweeping through it" width="520" height="520"
+               loading="lazy" decoding="async" />
+          <video class="hero-video" controls preload="none" playsinline
+                 poster="/assets/op-app-poster.jpg"
+                 aria-label="PCTG Optimizer Pro in action">
+            <source src="/assets/op-app.web.mp4" type="video/mp4" />
+            Your browser cannot play this video. The full app is shown in the
+            <a href="/demo">free online demo</a>.
+          </video>
+          <figcaption>Real app footage — 39 seconds, no editing tricks.</figcaption>
+        </figure>
       </div>
     </div>
   </header>
