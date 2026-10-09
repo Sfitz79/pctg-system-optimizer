@@ -16,7 +16,8 @@ import { fileURLToPath } from 'node:url';
 import asar from '@electron/asar';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const asarPath = join(root, 'dist', 'PCTG Optimizer Pro-win32-x64', 'resources', 'app.asar');
+const edition = process.argv[2] === 'admin' ? 'admin' : 'public';
+const asarPath = join(root, 'dist', edition, 'PCTG Optimizer Pro-win32-x64', 'resources', 'app.asar');
 
 const pkg = JSON.parse(asar.extractFile(asarPath, 'package.json').toString('utf8'));
 

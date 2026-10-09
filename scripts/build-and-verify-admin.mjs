@@ -61,7 +61,7 @@ for (let attempt = 1; attempt <= 3 && !built; attempt++) {
 console.log('  build complete');
 
 step('VARIANT RESOLUTION IN THE PACKAGE');
-const asarPath = ROOT + 'dist/PCTG Optimizer Pro-win32-x64/resources/app.asar';
+const asarPath = ROOT + 'dist/admin/PCTG Optimizer Pro-win32-x64/resources/app.asar';
 if (!existsSync(asarPath)) { console.log('  FAIL  app.asar missing'); process.exit(1); }
 const asar = readFileSync(asarPath).toString('latin1');
 console.log('  build-variant.json packed : ' + asar.includes('build-variant.json'));

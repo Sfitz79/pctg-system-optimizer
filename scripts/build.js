@@ -73,6 +73,25 @@ async function main() {
   for (const dir of dirsToCopy) {
     fs.cpSync(path.join(rootDir, dir), path.join(buildDir, dir), { recursive: true });
   }
+
+  /*
+   * scripts/ ships ONLY the PowerShell modules the app runs.
+   *
+   * main.js ensureScriptsExtracted() copies *.ps1 out to userData and runs those; it never
+   * touches the .mjs/.js/.iss build and verification tooling. Before this filter the whole
+   * scripts/ dir was packed into app.asar, which put the internal-unlock password literal
+   * (referenced by the test scripts) and the strings SPECIAL_KEYS / "internal":true inside
+   * the customer binary. They were inert, but shipping the password string at all is a leak
+   * a curious customer can grep for, and it made every whole-asar secret scan red with
+   * false positives - which trains whoever reads the output to ignore it.
+   */
+  const scriptsOut = path.join(buildDir, 'scripts');
+  if (fs.existsSync(scriptsOut)) {
+    for (const f of fs.readdirSync(scriptsOut)) {
+      const fp = path.join(scriptsOut, f);
+      if (fs.statSync(fp).isFile() && !f.toLowerCase().endsWith('.ps1')) fs.rmSync(fp);
+    }
+  }
   for (const file of filesToCopy) {
     const src = path.join(rootDir, file);
     if (fs.existsSync(src)) {

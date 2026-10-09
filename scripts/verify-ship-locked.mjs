@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = 'C:/Users/simon/WebStormProjects/pctg-system optimizer/pctg-optimizer';
-const DIST = join(ROOT, 'dist', 'PCTG Optimizer Pro-win32-x64');
+const DIST = join(ROOT, 'dist', 'public', 'PCTG Optimizer Pro-win32-x64');
 const ASAR = join(DIST, 'resources', 'app.asar');
 
 let fail = 0;
