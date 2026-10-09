@@ -1,6 +1,6 @@
 [Setup]
 AppName=PCTG Optimizer Pro
-AppVersion=1.2.0
+AppVersion=1.3.0
 AppPublisher=PcTechGuyOnline
 AppPublisherURL=https://pctechguyonline.com
 AppSupportURL=https://pctechguyonline.com
@@ -11,7 +11,7 @@ UninstallDisplayIcon={app}\PCTG Optimizer Pro.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=..\dist
-OutputBaseFilename=PCTG-Optimizer-Pro-Setup-v1.2.0
+OutputBaseFilename=PCTG-Optimizer-Pro-Setup-v1.3.0
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
