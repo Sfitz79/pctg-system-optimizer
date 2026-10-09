@@ -8,7 +8,22 @@ const pkg = require('../package.json');
 
 const rootDir = path.join(__dirname, '..');
 const buildDir = path.join(rootDir, '_build_src');
-const distDir = path.join(rootDir, 'dist');
+
+/*
+ * OUTPUT GOES TO A PER-EDITION FOLDER: dist/admin and dist/public.
+ *
+ * A single shared dist/ could not be reused reliably. The app relaunches itself
+ * elevated, and an elevated process holding the packaged .exe makes the folder
+ * undeletable AND unrenameable from a normal shell - both rmSync and renameSync returned
+ * EPERM. That is what repeatedly blocked builds while the app was open.
+ *
+ * Separate folders mean a running build never touches the other's files, the two
+ * editions can sit side by side for testing, and a stale locked folder can never block
+ * a new build at all. The old shared dist/PCTG Optimizer Pro-win32-x64 may still be
+ * locked by a running instance; it is simply left alone.
+ */
+const edition = process.env.PCTG_BUILD === 'admin' ? 'admin' : 'public';
+const distDir = path.join(rootDir, 'dist', edition);
 const electronVersion = electronPkg.version;
 
 const filesToObfuscate = [
@@ -21,7 +36,38 @@ const filesToCopy = ['main.js', 'preload.js', 'package.json', 'package-lock.json
 async function main() {
   console.log('1. Cleaning...');
   if (fs.existsSync(buildDir)) fs.rmSync(buildDir, { recursive: true });
-  if (fs.existsSync(distDir)) fs.rmSync(distDir, { recursive: true });
+  /*
+   * Removing dist/ used to be a plain rmSync and it failed with EPERM over and over.
+   *
+   * Cause: main.js relaunches the app ELEVATED (-Verb RunAs) because the optimiser
+   * needs administrator rights to run its tweaks. Those elevated child processes cannot
+   * be killed by a normal shell - Stop-Process returns "Access is denied" - so they sit
+   * holding a handle on the packaged exe and the build cannot delete it.
+   *
+   * A build must not be blocked by the app still running, so if deletion fails the old
+   * directory is renamed out of the way instead. Renaming a directory that is in use is
+   * permitted on Windows where deleting it is not, so the build proceeds and the stale
+   * folder is simply left behind for the Boss to clear from Task Manager.
+   */
+  if (fs.existsSync(distDir)) {
+    try {
+      fs.rmSync(distDir, { recursive: true });
+      console.log('   removed previous dist/');
+    } catch (e) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const parked = path.join(rootDir, `dist_locked_${stamp}`);
+      try {
+        fs.renameSync(distDir, parked);
+        console.log(`   COULD NOT DELETE dist/ (${e.code || e.message}).`);
+        console.log(`   The app is probably still running ELEVATED - close it in Task Manager.`);
+        console.log(`   Moved the old folder to ${path.basename(parked)} and continuing.`);
+      } catch (e2) {
+        console.error(`   FATAL: cannot clear dist/ (${e2.code || e2.message}).`);
+        console.error('   Close every PCTG Optimizer window, then run the build again.');
+        process.exit(1);
+      }
+    }
+  }
 
   console.log('2. Copying source files...');
   for (const dir of dirsToCopy) {
@@ -156,9 +202,17 @@ if (buildEdition === 'admin') {
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
   pkg.name = 'pctg-optimizer-admin';
   pkg.productName = 'PCTG Optimizer Admin Edition';
+  pkg.pctgEdition = 'admin';
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
   console.log(`   ADMIN EDITION - Pro unlocked, separate app id (${pkg.name})`);
 } else {
+  const pkgPath = path.join(buildDir, 'package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  // Only the edition changes here. name/productName are left exactly as they are,
+  // because this is a copy of the real public package.json and the public build must
+  // keep its normal identity and app id.
+  pkg.pctgEdition = 'public';
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
   console.log('   public edition - locked, licences come from the server only');
 }
 

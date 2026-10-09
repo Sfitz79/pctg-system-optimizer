@@ -6,7 +6,8 @@ const crypto = require('crypto');
 const os = require('os');
 const { spawn, exec } = require('child_process');
 
-const { checkInternalUnlock } = require('./lib/internalUnlock.js');
+const { checkInternalUnlock, internalUnlockEnabled } = require('./lib/internalUnlock.js');
+const { IS_ADMIN, PRODUCT_NAME, VARIANT, variantPath } = require('./lib/buildVariant.js');
 
 const VALIDATION_API = 'https://pctgopt.pctechguyonline.com/api/validate';
 const UPDATE_MANIFEST = 'https://pctg-system-optimizer.vercel.app/updates/latest.json';
@@ -271,8 +272,22 @@ function createWindow() {
   });
 
   win.maximize();
-  if (IS_ADMIN) win.setTitle(PRODUCT_NAME + '  -  ADMIN BUILD (not for customer distribution)');
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
+  /*
+   * Set the Admin Edition title AFTER loadFile.
+   *
+   * It was set before, and loadFile overwrote it the moment index.html's <title> was
+   * applied - so the Admin Edition opened with a window labelled exactly like the
+   * customer build. That matters: an admin build must be impossible to mistake for
+   * something a customer received, especially since these are built side by side.
+   */
+  if (IS_ADMIN) {
+    const adminTitle = PRODUCT_NAME + '  -  ADMIN BUILD (not for customer distribution)';
+    win.webContents.on('did-finish-load', () => {
+      try { win.setTitle(adminTitle); } catch {}
+    });
+    setTimeout(() => { try { win.setTitle(adminTitle); } catch {} }, 2500);
+  }
   mainWindow = win;
 }
 
@@ -288,14 +303,45 @@ function createWindow() {
 //
 // These handlers make startup loud. They write to a file as well as the console
 // because a packaged Windows build's stderr is not always visible.
-// PCTG_STARTUP_LOG=<path> enables the file; the console handlers always run.
+//
+// THE FILE PATH IS NOT TAKEN FROM AN ENVIRONMENT VARIABLE. It did that before, and
+// relying on PCTG_STARTUP_LOG reaching the main process through PowerShell Start-Process
+// and through cmd was unreliable - the log silently stayed empty, which is exactly the
+// failure mode diagnostics exist to prevent. The path is now derived from the app's own
+// userData folder, so it always exists and always works, with no setup at all.
+//
+// For the Admin Edition userData ends in pctg-optimizer-admin, so the two builds write
+// to separate files and cannot be confused.
+//
+// Public build location:
+//   %APPDATA%\pctg-optimizer\startup.log
+// Admin build location:
+//   %APPDATA%\pctg-optimizer-admin\startup.log
 // ---------------------------------------------------------------------------
-const STARTUP_LOG = process.env.PCTG_STARTUP_LOG || '';
+const STARTUP_LOG = (() => {
+  try {
+    const dir = app.getPath('userData');
+    require('node:fs').mkdirSync(dir, { recursive: true });
+    return path.join(dir, 'startup.log');
+  } catch {
+    return process.env.PCTG_STARTUP_LOG || '';
+  }
+})();
+
+let STARTUP_LOG_WRITTEN = false;
 function startupLog(msg) {
   const line = `[startup ${new Date().toISOString()}] ${msg}`;
   console.log(line);
+  if (!STARTUP_LOG) return;
   try {
-    if (STARTUP_LOG) require('node:fs').appendFileSync(STARTUP_LOG, line + '\n');
+    // Truncate once at boot so each run is a fresh record rather than an ever-growing
+    // file that hides the most recent attempt - the previous run is usually the useful one.
+    if (!STARTUP_LOG_WRITTEN) {
+      require('node:fs').writeFileSync(STARTUP_LOG, line + '\n');
+      STARTUP_LOG_WRITTEN = true;
+    } else {
+      require('node:fs').appendFileSync(STARTUP_LOG, line + '\n');
+    }
   } catch {}
 }
 process.on('uncaughtException', (err) => {
@@ -307,6 +353,9 @@ process.on('unhandledRejection', (err) => {
 });
 
 startupLog('main.js loaded, platform=' + process.platform + ' electron=' + (process.versions.electron || 'n/a'));
+try {
+  startupLog('build variant: edition=' + VARIANT.edition + ' isAdmin=' + IS_ADMIN + ' path=' + variantPath);
+} catch {}
 
 app.whenReady().then(() => {
   startupLog('app ready');
@@ -455,6 +504,40 @@ function writeLicense(data) {
 }
 
 ipcMain.handle('pctg:check-license', async () => {
+  /*
+   * ADMIN EDITION AUTO-GRANT - must be the FIRST thing this handler does.
+   *
+   * The handler used to read the stored licence first and return invalid when none
+   * existed. The admin check lived further down, so on a fresh machine with no
+   * licence file the Admin Edition was locked out before its own unlock could run -
+   * which is exactly why the Boss saw "This licence key is not recognised" while
+   * testing a build that was supposed to need no key at all.
+   *
+   * IS_ADMIN is baked into package.json at build time (pctgEdition). It can only be
+   * true for a build produced by PCTG_BUILD=admin, which the release pipeline never
+   * passes, so this branch is unreachable in a customer copy. Failing closed is the
+   * point: if the variant cannot be read, readVariant() returns 'public'.
+   */
+  if (IS_ADMIN) {
+    try {
+      writeLicense({
+        key: 'INTERNAL-ADMIN-EDITION',
+        tier: 'pro',
+        activated: true,
+        machineId: getMachineId(),
+        activatedAt: Date.now(),
+        serverVerifiedAt: Date.now(),
+        internal: true,
+        adminEdition: true,
+      });
+    } catch (e) {
+      startupLog('admin edition licence write failed: ' + (e && e.message ? e.message : e));
+    }
+    activeTier = 'pro';
+    startupLog('check-license: ADMIN EDITION auto-granted Pro (no licence, no server call)');
+    return { valid: true, tier: 'pro', internal: true, admin: true };
+  }
+
   let local = null;
   try {
     local = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));

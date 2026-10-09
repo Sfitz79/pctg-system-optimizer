@@ -90,26 +90,50 @@ function initIntro() {
   function lerp(a, b, t) { return a + (b - a) * Math.min(Math.max(t, 0), 1); }
   function easeOut(t) { return 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3); }
 
-  let burstFired = false;
-  const t0 = performance.now();
+let burstFired = false;
+    const t0 = performance.now();
 
-  function animate() {
-    const ms = performance.now() - t0;
-    const s = ms / 1000;
-
-    if (ms > 8700) {
-      container.classList.add('hidden');
-      setTimeout(() => {
+    // THE INTRO MUST ALWAYS GET OUT OF THE WAY.
+    //
+    // Everything below here is driven by the Three.js animate loop. If WebGL or the
+    // renderer fails to initialise, animate() throws or is never scheduled, the
+    // `ms > 8700` branch never runs, and the app sits on an empty intro screen
+    // forever - which is exactly what it did, and it looked like "the app is blank".
+    //
+    // This independent timer does the reveal regardless. It is idempotent, so it is
+    // harmless if the animation reached 8700ms first and it is the ONLY thing that
+    // reveals the app when the animation died.
+    let revealed = false;
+    function revealApp() {
+      if (revealed) return;
+      revealed = true;
+      try {
+        container.classList.add('hidden');
         container.style.display = 'none';
+      } catch {}
+      try {
         checkLicense();
         initOptimizer();
         initBenchmarks();
         refreshStats();
         refreshReport();
         setInterval(refreshStats, 2000);
-      }, 600);
-      return;
+      } catch (e) {
+        console.error('[intro] reveal failed', e);
+      }
     }
+    setTimeout(revealApp, 9600);
+    // Safety net: if even the timer context is wedged, force it much later.
+    setTimeout(() => revealApp(), 20000);
+
+    function animate() {
+      const ms = performance.now() - t0;
+      const s = ms / 1000;
+
+      if (ms > 8700) {
+        setTimeout(revealApp, 600);
+        return;
+      }
 
     // --- Three.js ambient particles ---
     const pos = pGeo.attributes.position.array;
