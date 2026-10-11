@@ -26,6 +26,21 @@ const edition = process.env.PCTG_BUILD === 'admin' ? 'admin' : 'public';
 const distDir = path.join(rootDir, 'dist', edition);
 const electronVersion = electronPkg.version;
 
+/*
+ * BAKE THE BUILD VARIANT IN.
+ *
+ * PCTG_BUILD=admin produces the Admin Edition (Pro available without a licence,
+ * separate product name). Anything else - including every production release - produces
+ * the locked public build. The release script never passes admin, so a customer build
+ * cannot become an admin build by accident.
+ *
+ * Declared up here, not in step 7, because the file-exclusion rules in step 2 need to
+ * know the edition. It was originally declared next to the app.asar creation and reading
+ * it earlier in the same function is a ReferenceError (const is block-scoped and not
+ * hoisted) - the build would have failed only on the public path that strips genkey.js.
+ */
+const buildEdition = edition;
+
 const filesToObfuscate = [
   'main.js', 'preload.js', 'app/renderer.js',
   'report/report.js', 'report/systemInfo.js', 'report/system-analyzer.js'
@@ -126,6 +141,34 @@ async function main() {
   // runtime artifacts (the app fetches update manifests from the server).
   fs.rmSync(path.join(buildDir, 'app', 'updates'), { recursive: true, force: true });
 
+  /*
+   * THE PUBLIC BUILD DOES NOT SHIP license/genkey.js.
+   *
+   * genkey.js is the INTERNAL key-minting tool. It writes to keys.json AND to
+   * ../../api/server-keys.json, and it carries the full tier/price table and the key
+   * format. Nothing in the runtime path ever requires it - main.js reads only
+   * license/keys.json and license/license.json, both of which are empty seed files
+   * ({"keys":[],"used":{}} and {"key":"","activated":false}), so it stayed plaintext in
+   * the asar while main.js and renderer.js were obfuscated.
+   *
+   * It is not a licence BYPASS on its own: api/validate.js is the only authority and it
+   * reads Postgres, so a customer running this locally mints keys the server rejects. But
+   * shipping the minting tool, unobfuscated, with the price list, to a customer is not a
+   * thing to do deliberately. It is also exactly what a whole-asar secret scan should
+   * flag, and a scan that cries wolf gets ignored.
+   *
+   * Kept in the ADMIN build, which is never published and is the tool the Boss uses.
+   */
+  if (buildEdition !== 'admin') {
+    for (const f of ['genkey.js']) {
+      const fp = path.join(buildDir, 'license', f);
+      if (fs.existsSync(fp)) {
+        fs.rmSync(fp);
+        console.log(`  removed license/${f} from the public build`);
+      }
+    }
+  }
+
   console.log('3. Installing production dependencies...');
   execSync('npm install --omit=dev --no-audit --no-fund', { cwd: buildDir, stdio: 'inherit' });
 
@@ -202,12 +245,8 @@ const asarPath = path.join(resourcesDir, 'app.asar');
 /*
  * BAKE THE BUILD VARIANT IN.
  *
- * PCTG_BUILD=admin produces the Admin Edition (Pro available without a licence,
- * separate product name). Anything else - including every production release -
- * produces the locked public build. The release script never passes admin, so a
- * customer build cannot become an admin build by accident.
+ * (buildEdition is declared at the top of this file - see the note there.)
  */
-const buildEdition = process.env.PCTG_BUILD === 'admin' ? 'admin' : 'public';
 const variantFile = path.join(buildDir, 'build-variant.json');
 fs.writeFileSync(variantFile, JSON.stringify({
   edition: buildEdition,

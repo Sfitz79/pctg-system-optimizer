@@ -10,8 +10,8 @@ DefaultGroupName=PCTG Optimizer Pro
 UninstallDisplayIcon={app}\PCTG Optimizer Pro.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=..\dist
-OutputBaseFilename=PCTG-Optimizer-Pro-Setup-v1.3.0
+OutputDir=..\dist\public
+OutputBaseFilename=PCTG-Optimizer-Setup
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -20,7 +20,7 @@ CloseApplications=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\dist\PCTG Optimizer Pro-win32-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\public\PCTG Optimizer Pro-win32-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\PCTG Optimizer Pro"; Filename: "{app}\PCTG Optimizer Pro.exe"

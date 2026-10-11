@@ -71,8 +71,9 @@ console.log('  admin product name packed : ' + asar.includes('PCTG Optimizer Adm
 step('MODULE RESOLUTION OUTSIDE THE ASAR');
 try {
   const v = await import(new URL('../lib/buildVariant.js', import.meta.url).href);
-  console.log('  IS_ADMIN (source tree)    : ' + v.IS_ADMIN + '   <- false here is CORRECT, no variant file yet');
-  console.log('  variantPath              : ' + v.variantPath);
+  console.log('  IS_ADMIN (source tree)    : ' + v.IS_ADMIN + '   <- false here is CORRECT, the edition is baked per-build, not in the source tree');
+  console.log('  VARIANT                   : ' + JSON.stringify(v.VARIANT));
+  console.log('  PRODUCT_NAME              : ' + v.PRODUCT_NAME);
 } catch (e) {
   console.log('  FAIL  ' + e.message);
 }
