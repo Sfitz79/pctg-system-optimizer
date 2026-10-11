@@ -118,6 +118,32 @@ export default async (req, res) => {
   const dlZip = 'https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download/pctg-optimizer-portable.zip';
   const demoNote = demoPaid ? '<div class="muted" style="color:#ffc857">DEMO ORDER — issued for testing with no real payment. This key is not from a live sale.</div>' : '';
 
+  /*
+   * The version here is read from the release manifest, not hardcoded.
+   *
+   * This line said "v1.2.0" while the build being shipped was v1.3.0. A customer is told
+   * which version they bought, and a page that names the wrong one either sends them to
+   * support to ask "is mine current?" or - worse - makes a genuinely old install look
+   * supported. web/updates/latest.json is the manifest the desktop app itself checks for
+   * updates, so it cannot drift from the app the way a literal in this file did.
+   */
+  let version = '1.3.0';
+  try {
+    const mf = await fetch(new URL('/updates/latest.json', base).href, { redirect: 'follow' });
+    if (mf.ok) {
+      const j = await mf.json();
+      if (j && typeof j.version === 'string' && /^\d+\.\d+\.\d+$/.test(j.version.trim())) {
+        version = j.version.trim();
+      } else {
+        console.warn('[shop-capture] update manifest has no usable version field');
+      }
+    } else {
+      console.warn(`[shop-capture] update manifest returned HTTP ${mf.status}`);
+    }
+  } catch (e) {
+    console.warn('[shop-capture] could not read the update manifest:', e?.message || e);
+  }
+
   res.send(page('Licence ready', '<h1>Licence issued 🎉</h1>' +
     '<p>Thank you for your order. Your ' + (TIERS[tier] ? TIERS[tier].label : 'Standard') + ' licence key:</p>' +
     '<div class="key">' + key + '</div>' +
@@ -125,6 +151,6 @@ export default async (req, res) => {
     '<a class="btn" href="' + dlSetup + '">Download Installer (EXE)</a>' +
     '<a class="btn g" href="' + dlZip + '">Download Portable ZIP</a>' +
     demoNote +
-    '<div class="muted">Keep this key safe. You can re-download the app any time from this page. v1.2.0 · Windows 10/11' +
+    '<div class="muted">Keep this key safe. You can re-download the app any time from this page. v' + version + ' · Windows 10/11' +
     '<br><a href="mailto:info@pctechguyonline.com" style="color:#7B2FFF">info@pctechguyonline.com</a></div>'));
 };
