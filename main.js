@@ -632,12 +632,15 @@ ipcMain.handle('pctg:activate-license', async (event, key) => {
     /*
      * INTERNAL CAPTURE UNLOCK - for screenshot / video capture of the Pro UI.
      *
-     * Only active when PCTG_INTERNAL_UNLOCK is set in THIS process's environment.
-     * It is not set in the released installer, so a customer's copy ignores the
-     * password completely and every licence comes from the server.
+     * Honoured only for the Admin Edition or an UNPACKED developer launch. In a
+     * packaged public build this branch is unreachable even if PCTG_INTERNAL_UNLOCK
+     * is set, because an environment variable is something the person running the app
+     * chooses - a customer could set it and type the same value here to get Pro with
+     * no server call. That was a real bypass, fixed 2026-10-11; see
+     * lib/internalUnlock.js and tests/internal-unlock.test.js.
      *
      * This replaces the old SPECIAL_KEYS entry, which granted Pro with no server
-     * call in every shipped copy. See lib/internalUnlock.js for why.
+     * call in every shipped copy.
      */
     const internal = checkInternalUnlock(trimmed);
     if (internal) {

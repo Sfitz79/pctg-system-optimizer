@@ -170,6 +170,27 @@ button.primary:hover, .start-btn:hover { background: #cc0000; }
 .welcome { margin-bottom: 20px; }
 .welcome h2 { color: var(--primary); font-size: 1.5rem; }
 .welcome p { color: var(--text-muted); font-size: 13px; }
+.tuneup-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin: 0 0 20px; padding: 16px 18px;
+  background: linear-gradient(90deg, rgba(255,0,0,0.06), rgba(255,0,0,0.02));
+  border: 1px solid rgba(255,0,0,0.25); border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+}
+.tuneup-copy h2 { color: var(--primary); font-size: 1.05rem; }
+.tuneup-copy p { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.settings-panel {
+  margin: 0 0 20px; padding: 14px 16px;
+  background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.settings-panel h3 { color: var(--primary); font-size: 14px; margin-bottom: 6px; }
+.settings-hint { color: var(--text-muted); font-size: 12px; margin-bottom: 10px; }
+.settings-step {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.settings-step input { accent-color: var(--primary); width: 16px; height: 16px; }
+.settings-reset { margin-top: 10px; font-weight: 600; }
 /* Stats Row */
 .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 16px 0; }
 .stat-box { background: var(--bg-alt); padding: 12px; border-radius: var(--radius); border: 1px solid var(--border); text-align: center; }

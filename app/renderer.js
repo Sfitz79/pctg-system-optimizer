@@ -412,17 +412,47 @@ function initOptimizer() {
       btn.style.opacity = '1';
     });
   });
-  // Start One-Click Optimisation (runs the 3 core phases)
+  // Start One-Click Optimisation / Tune Up Windows (runs the configurable core phases)
+  const TUNEUP_STEPS = [
+    { key: 'cleanup', label: 'Phase 1 \u2014 Clean & Clear' },
+    { key: 'performance', label: 'Phase 2 \u2014 Performance Boost' },
+    { key: 'final', label: 'Phase 3 \u2014 Final Sweep' }
+  ];
+  async function runTuneUp() {
+    const settings = getTuneUpSettings();
+    for (const step of TUNEUP_STEPS) {
+      if (settings[step.key] === false) {
+        log('○ ' + step.label + ' skipped (disabled in Settings).');
+        continue;
+      }
+      await runPhase(step.key, step.label);
+    }
+  }
   const btnStart = document.getElementById('start-optimize');
   if (btnStart) {
     btnStart.onclick = async () => {
       btnStart.disabled = true;
       btnStart.textContent = 'Optimizing...';
-      await runPhase('cleanup', 'Phase 1 \u2014 Clean & Clear');
-      await runPhase('performance', 'Phase 2 \u2014 Performance Boost');
-      await runPhase('final', 'Phase 3 \u2014 Final Sweep');
-      btnStart.disabled = false;
-      btnStart.textContent = 'Start One-Click Optimisation';
+      try {
+        await runTuneUp();
+      } finally {
+        btnStart.disabled = false;
+        btnStart.textContent = 'Start One-Click Optimisation';
+      }
+    };
+  }
+  const btnTuneUp = document.getElementById('btn-tuneup');
+  if (btnTuneUp) {
+    btnTuneUp.onclick = async () => {
+      btnTuneUp.disabled = true;
+      const original = btnTuneUp.textContent;
+      btnTuneUp.textContent = 'Tuning Up...';
+      try {
+        await runTuneUp();
+      } finally {
+        btnTuneUp.disabled = false;
+        btnTuneUp.textContent = original;
+      }
     };
   }
   // Export PDF
@@ -480,6 +510,54 @@ function setupToggleSwitches() {
       window.pctg.runToggle({ key: config.toggle, enabled: enabled ? 1 : 0 });
     });
   });
+}
+
+// ======== One-Click Optimisation Settings ========
+const TUNEUP_SETTINGS_KEY = 'pctg_tuneup_settings';
+const TUNEUP_DEFAULTS = { cleanup: true, performance: true, final: true };
+
+function getTuneUpSettings() {
+  try {
+    return Object.assign({}, TUNEUP_DEFAULTS, JSON.parse(localStorage.getItem(TUNEUP_SETTINGS_KEY) || '{}'));
+  } catch {
+    return Object.assign({}, TUNEUP_DEFAULTS);
+  }
+}
+
+function setupTuneUpSettings() {
+  const panel = document.getElementById('settings-panel');
+  const btn = document.getElementById('btn-settings');
+  if (btn && panel) {
+    const isOpen = () => panel.style.display === 'block';
+    btn.onclick = () => { panel.style.display = isOpen() ? 'none' : 'block'; };
+    document.addEventListener('click', (e) => {
+      if (isOpen() && !panel.contains(e.target) && e.target.id !== 'btn-settings') {
+        panel.style.display = 'none';
+      }
+    });
+  }
+  const checkboxes = document.querySelectorAll('[data-tuneup-step]');
+  if (!checkboxes.length) return;
+  const apply = (settings) => {
+    checkboxes.forEach(cb => { cb.checked = settings[cb.dataset.tuneupStep] !== false; });
+  };
+  apply(getTuneUpSettings());
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const settings = getTuneUpSettings();
+      settings[cb.dataset.tuneupStep] = cb.checked;
+      localStorage.setItem(TUNEUP_SETTINGS_KEY, JSON.stringify(settings));
+    });
+  });
+  const reset = document.getElementById('settings-reset');
+  if (reset) {
+    reset.onclick = () => {
+      localStorage.removeItem(TUNEUP_SETTINGS_KEY);
+      apply(getTuneUpSettings());
+      const logEl = document.getElementById('log');
+      if (logEl) logEl.textContent += 'Settings reset - all phases enabled.\n';
+    };
+  }
 }
 
 // ======== Auto-Logout ========
@@ -718,6 +796,7 @@ document.addEventListener('keydown', (e) => {
 
 // ======== Init ========
 setupToggleSwitches();
+setupTuneUpSettings();
 
 if (typeof THREE !== 'undefined') {
   initIntro();
