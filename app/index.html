@@ -44,6 +44,12 @@
     </div>
   </div>
 
+  <section id="update-status" class="update-status" aria-live="polite" hidden>
+    <span id="update-message">Checking for app updates…</span>
+    <button id="btn-check-updates" type="button">Check now</button>
+    <button id="btn-install-update" class="primary" type="button" hidden>Download and install</button>
+  </section>
+
   <!-- LICENSE / ACTIVATION OVERLAY -->
   <div id="license-screen">
     <div class="license-screen-inner">
@@ -80,6 +86,8 @@
         <p>Already have a key?</p>
         <input id="license-input" placeholder="Enter your license key" />
         <button id="activate-btn">Activate</button>
+        <button id="btn-demo" class="demo-entry">Explore the app in Demo mode</button>
+        <p class="demo-entry-note">Browse the app and its sections. Optimisation, benchmarks, exports, and settings changes remain locked until a paid licence is activated.</p>
         <p id="license-error" class="license-error"></p>
       </div>
       <p class="activation-warning">PLEASE NOTE YOUR KEY &mdash; YOU GET UNLIMITED USAGE BUT LOST KEYS CANNOT BE RECOVERED</p>
@@ -125,22 +133,59 @@
       </div>
     </header>
 
+    <div id="demo-mode-banner" class="demo-mode-banner" hidden>
+      <span><strong>Preview mode.</strong> Screens are available to explore; product actions are disabled until a paid licence is activated.</span>
+      <button id="btn-demo-scan" type="button">Scan this PC</button>
+      <button id="btn-demo-exit" type="button">Return to activation</button>
+    </div>
+    <nav id="demo-navigation" class="demo-navigation" aria-label="Preview sections" hidden>
+      <a href="#demo-dashboard">Dashboard</a>
+      <a href="#demo-optimise">Optimiser</a>
+      <a href="#demo-modules">Modules</a>
+      <a href="#demo-benchmark">Benchmark &amp; reports</a>
+      <a href="#settings-panel" data-demo-settings>Settings</a>
+    </nav>
+
     <!-- MAIN DASHBOARD -->
     <main class="dashboard">
 
-      <section class="welcome">
+      <section class="welcome" id="demo-dashboard">
         <h2>Welcome to PCTG Optimizer Pro</h2>
         <p>One-Click Optimisation for peak PC performance.</p>
       </section>
 
+      <section id="demo-system-scan" class="section demo-system-scan" hidden aria-live="polite">
+        <h3 class="section-title">Preview system scan</h3>
+        <p>This local, read-only scan checks hardware details and displays general recommendations. It does not apply optimizations or send scan details to an online service.</p>
+        <p id="demo-scan-status" role="status">Select “Scan this PC” to begin.</p>
+        <div id="demo-scan-specs"></div>
+        <ul id="demo-scan-recommendations"></ul>
+      </section>
+
       <!-- TUNE UP WINDOWS -->
-      <section class="tuneup-banner">
+      <section class="tuneup-banner" id="demo-optimise">
         <div class="tuneup-copy">
           <h2>Tune Up Windows</h2>
           <p>One click, full tune-up - clean the junk, boost performance and sweep up the leftovers. Runs the safe three-phase protocol.</p>
         </div>
         <button id="btn-tuneup" class="btn primary" title="Run the full Tune Up: Clean &amp; Clear, Performance Boost, Final Sweep">Run Tune Up Now</button>
       </section>
+
+      <!-- GAMING MODE (safe, reversible tweaks only) -->
+      <section class="tuneup-banner gaming-mode-banner">
+        <div class="tuneup-copy">
+          <h2>Gaming Mode</h2>
+          <p>Stops known background launchers from competing with your game, and reports whether hardware-accelerated GPU scheduling is already on. Safe, reversible changes only - no aggressive registry edits.</p>
+          <p class="gaming-disclaimer">Gaming Mode does not raise your frame rate on older hardware. What it does is stop background processes stealing resources while you play. Every startup change can be switched back on from the Startup Apps list, and we recommend creating a restore point first.</p>
+        </div>
+        <div class="gaming-mode-actions">
+          <label class="gaming-opt" title="Off by default. When on, known background launchers (OneDrive, Teams, Discord, Spotify and similar) are disabled, and each can be re-enabled from the Startup Apps list.">
+            <input type="checkbox" id="gaming-disable-startup" /> <span>Disable known background launchers</span>
+          </label>
+          <button id="btn-gaming-mode" class="btn primary" title="Run the safe gaming pass: report HAGS, and optionally disable known background launchers.">Start Gaming Mode</button>
+        </div>
+      </section>
+      <div id="gaming-mode-result" class="gaming-mode-result" style="display:none"></div>
 
       <!-- ONE-CLICK SETTINGS -->
       <div id="settings-panel" class="settings-panel" style="display:none">
@@ -190,6 +235,32 @@
         <span id="stat-cpu-info"></span> &bull; <span id="stat-ram-info"></span> &bull; <span id="stat-gpu-info"></span> &bull; <span id="stat-disk-info"></span>
       </div>
 
+      <section id="pro-first-run" class="section pro-first-run" style="display:none" aria-live="polite">
+        <h3 class="section-title">Pro system check &amp; benchmark</h3>
+        <p id="pro-first-run-status">Scanning this computer. No changes will be made without your selection.</p>
+        <div id="pro-system-summary" class="pro-system-summary"></div>
+        <div id="pro-startup-recommendations"></div>
+        <div id="hardware-tuning-tools" class="hardware-tuning-tools"></div>
+        <div class="pro-first-run-actions">
+          <button id="pro-apply-recommendations" class="btn primary" disabled>Apply selected startup changes &amp; run final benchmark</button>
+          <button id="pro-skip-recommendations" class="btn" disabled>Skip changes &amp; run final benchmark</button>
+          <button id="pro-retry-scan" class="btn" style="display:none">Retry system scan</button>
+        </div>
+        <div id="pro-benchmark-comparison" class="pro-benchmark-comparison"></div>
+      </section>
+
+      <section id="startup-manager" class="section" style="display:none">
+        <h3 class="section-title">Startup Apps manager</h3>
+        <p>Review programs that start with Windows. Items are read-only until you select them and apply a change. Disabled items can be restored here.</p>
+        <div id="startup-app-list" class="startup-app-list" aria-live="polite"></div>
+        <div class="startup-manager-actions">
+          <button id="startup-refresh" class="btn">Refresh list</button>
+          <button id="startup-disable-selected" class="btn">Disable selected</button>
+          <button id="startup-restore-selected" class="btn">Restore selected</button>
+        </div>
+        <p id="startup-manager-status" role="status"></p>
+      </section>
+
       <!-- TOGGLE ROW -->
       <div class="toggles">
         <div class="toggle-card" data-toggle="proMode" title="Deep system cleanup and performance boost.">
@@ -210,7 +281,7 @@
       </div>
 
       <!-- FEATURE GRID -->
-      <div class="grid">
+      <div class="grid" id="demo-modules">
         <div class="card" data-phase="registry" title="Safe tweaks for smoother, faster Windows.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M10 3H3v7h7V3zm11 0h-7v7h7V3zM10 14H3v7h7v-7zm11 0h-7v7h7v-7z"/></svg>
           <h4>Registry Optimization</h4>
@@ -296,7 +367,7 @@
       </div>
 
       <!-- BENCHMARK / REPORT SECTION -->
-      <div class="section">
+      <div class="section" id="demo-benchmark">
         <h3 class="section-title">Benchmark &amp; Report</h3>
         <div class="bench-controls">
           <button id="btn-bench-full" class="btn primary" title="Run the full before/after benchmark (FPS + network) to measure your gains.">Run Full Benchmark</button>

@@ -38,11 +38,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test source and licensing safeguards
+        run: node --test test/*.test.js tests/*.test.js
+
       - name: Build portable ZIP
         run: npm run build
 
-      - name: Build Inno Setup installer (best effort)
-        continue-on-error: true
+      - name: Build Inno Setup installer
         run: |
           choco install innosetup -y --no-progress
           npm run build:installer
@@ -65,15 +67,13 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ steps.version.outputs.version }}"
+          $portable = "./dist/public/PCTG Optimizer.zip"
+          $installer = "./dist/public/PCTG-Optimizer-Setup.exe"
+          if (-not (Test-Path $portable)) { throw "Portable build missing: $portable" }
+          if (-not (Test-Path $installer)) { throw "Installer build missing: $installer" }
           New-Item -ItemType Directory -Force -Path ./release | Out-Null
-          Get-ChildItem -Path ./dist -Include *.zip,*.exe -File | ForEach-Object {
-            if ($_.Extension -eq '.zip') {
-              # Stable asset name so releases/latest/download URLs never break
-              Copy-Item $_.FullName -Destination "./release/pctg-optimizer-portable.zip"
-            } else {
-              Copy-Item $_.FullName -Destination "./release/PCTG-Optimizer-Setup.exe"
-            }
-          }
+          Copy-Item $portable -Destination "./release/pctg-optimizer-portable.zip"
+          Copy-Item $installer -Destination "./release/PCTG-Optimizer-Setup.exe"
           Get-ChildItem ./release | Select-Object Name, Length
 
       - name: Create GitHub Release

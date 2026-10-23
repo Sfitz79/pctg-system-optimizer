@@ -1,4 +1,146 @@
 let activeTier = null;
+let demoMode = false;
+
+document.addEventListener('click', (event) => {
+  if (!demoMode || !event.target.closest('#app')) return;
+  if (event.target.closest('#demo-navigation, #btn-settings, #btn-demo-exit, #btn-demo-scan')) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);
+
+document.addEventListener('change', (event) => {
+  if (!demoMode || !event.target.closest('#app')) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);
+
+function setDemoMode(enabled) {
+  demoMode = enabled;
+  const app = document.getElementById('app');
+  const banner = document.getElementById('demo-mode-banner');
+  const navigation = document.getElementById('demo-navigation');
+  const scanSection = document.getElementById('demo-system-scan');
+  app.classList.toggle('demo-mode', enabled);
+  banner.hidden = !enabled;
+  navigation.hidden = !enabled;
+  scanSection.hidden = !enabled;
+  renderUpdateStatus();
+
+  app.querySelectorAll('button, input, select, textarea').forEach((control) => {
+    if (control.id === 'btn-settings' || control.id === 'btn-demo-exit' || control.id === 'btn-demo-scan') return;
+    if (enabled) {
+      if (!Object.hasOwn(control.dataset, 'demoWasDisabled')) control.dataset.demoWasDisabled = String(control.disabled);
+      control.disabled = true;
+    } else if (Object.hasOwn(control.dataset, 'demoWasDisabled')) {
+      control.disabled = control.dataset.demoWasDisabled === 'true';
+      delete control.dataset.demoWasDisabled;
+    }
+  });
+}
+let proLaunchFlowStarted = false;
+let latestUpdate = null;
+let updateCheckRunning = false;
+
+function renderUpdateStatus() {
+  const installButton = document.getElementById('btn-install-update');
+  if (!installButton) return;
+  installButton.hidden = !latestUpdate?.updateAvailable || demoMode || !activeTier;
+  if (latestUpdate?.updateAvailable && (demoMode || !activeTier)) {
+    document.getElementById('update-message').textContent = `Version ${latestUpdate.latest.version} is available. A paid licence is required to install it; your current key remains saved and will be revalidated after updating.`;
+  } else if (latestUpdate?.updateAvailable && activeTier) {
+    document.getElementById('update-message').textContent = `Version ${latestUpdate.latest.version} is available. Your saved licence will be revalidated after the update.`;
+  }
+}
+
+async function checkForAppUpdates() {
+  if (updateCheckRunning) return;
+  updateCheckRunning = true;
+  document.getElementById('update-status').hidden = false;
+  const message = document.getElementById('update-message');
+  const checkButton = document.getElementById('btn-check-updates');
+  checkButton.disabled = true;
+  message.textContent = 'Checking for updates…';
+  try {
+    const result = await window.pctg.checkUpdate();
+    latestUpdate = result;
+    if (result?.error) {
+      message.textContent = `Could not check for updates: ${result.error}`;
+    } else if (result?.updateAvailable && result.latest?.version) {
+      message.textContent = `Version ${result.latest.version} is available.`;
+    } else {
+      message.textContent = `PCTG Optimizer Pro is up to date (v${result?.latest?.version || 'current'}).`;
+    }
+    renderUpdateStatus();
+  } catch (error) {
+    message.textContent = `Could not check for updates: ${error.message || error}`;
+  } finally {
+    checkButton.disabled = false;
+    updateCheckRunning = false;
+  }
+}
+
+document.getElementById('btn-check-updates').addEventListener('click', checkForAppUpdates);
+document.getElementById('btn-install-update').addEventListener('click', async () => {
+  if (!activeTier || demoMode || !latestUpdate?.updateAvailable) return;
+  const message = document.getElementById('update-message');
+  const button = document.getElementById('btn-install-update');
+  button.disabled = true;
+  message.textContent = 'Downloading the verified installer… The app will close to install; your saved licence will be checked again when you reopen it.';
+  try {
+    const result = await window.pctg.downloadUpdate();
+    if (!result?.success) message.textContent = result?.message || 'The update could not be started.';
+  } catch (error) {
+    message.textContent = `Update failed: ${error.message || error}`;
+    button.disabled = false;
+  }
+});
+
+document.getElementById('btn-demo-scan').addEventListener('click', async () => {
+  const section = document.getElementById('demo-system-scan');
+  const status = document.getElementById('demo-scan-status');
+  const scanButton = document.getElementById('btn-demo-scan');
+  const specsContainer = document.getElementById('demo-scan-specs');
+  const recommendationsContainer = document.getElementById('demo-scan-recommendations');
+  section.hidden = false;
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scanButton.disabled = true;
+  status.textContent = 'Reading local hardware details… No changes will be made.';
+  specsContainer.replaceChildren();
+  recommendationsContainer.replaceChildren();
+
+  try {
+    const result = await window.pctg.demoSystemScan();
+    const { specs } = result;
+    const fields = [
+      ['Processor', `${specs.cpu.model} (${specs.cpu.cores} logical cores)`],
+      ['Memory', `${specs.ram.totalGB} GB total · ${specs.ram.freeGB} GB currently free`],
+      ['Graphics', `${specs.gpu.model} · ${specs.gpu.vram} VRAM`],
+      ['Windows', `${specs.os.platform} ${specs.os.release}`],
+      ['Motherboard', specs.motherboard],
+      ['Storage', specs.storage.length ? specs.storage.map(drive => `${drive.model} (${drive.sizeGB} GB)`).join('; ') : 'Not detected']
+    ];
+    for (const [label, value] of fields) {
+      const card = document.createElement('div');
+      card.className = 'demo-scan-spec';
+      const heading = document.createElement('strong');
+      heading.textContent = label;
+      const detail = document.createElement('span');
+      detail.textContent = value;
+      card.append(heading, detail);
+      specsContainer.appendChild(card);
+    }
+    for (const recommendation of result.recommendations) {
+      const item = document.createElement('li');
+      item.textContent = recommendation;
+      recommendationsContainer.appendChild(item);
+    }
+    status.textContent = `Scan completed ${new Date(result.scannedAt).toLocaleString()}. This scan was read-only.`;
+  } catch (error) {
+    status.textContent = `System scan failed: ${error.message || error}`;
+  } finally {
+    scanButton.disabled = false;
+  }
+});
 
 // ======== Three.js 3D Intro ========
 function initIntro() {
@@ -235,6 +377,8 @@ let burstFired = false;
 async function checkLicense() {
   const result = await window.pctg.checkLicense();
   activeTier = result.tier;
+  if (result.valid) setDemoMode(false);
+  renderUpdateStatus();
   const overlay = document.getElementById("license-screen");
   const appContainer = document.getElementById("app");
   if (!result.valid) {
@@ -247,16 +391,28 @@ async function checkLicense() {
     showTierBadge();
     resetInactivityTimer();
     document.getElementById("license-input").value = "";
-    if (!localStorage.getItem('pctg_bench_before')) {
+    const proFirstRun = document.getElementById('pro-first-run');
+    const startupManager = document.getElementById('startup-manager');
+    if (activeTier === 'pro') {
+      if (proFirstRun) proFirstRun.style.display = 'block';
+      if (startupManager) startupManager.style.display = 'block';
+      if (!proLaunchFlowStarted) {
+        proLaunchFlowStarted = true;
+        startProLaunchFlow();
+      }
+    } else {
+      if (proFirstRun) proFirstRun.style.display = 'none';
+      if (startupManager) startupManager.style.display = 'none';
+    }
+    if (activeTier !== 'pro' && !localStorage.getItem('pctg_bench_before')) {
       setTimeout(() => runAllBenchmarks('Initial Baseline Benchmark (Before)'), 1000);
     }
-    // Auto-analyze system for Full/Pro tiers in background
-    if (activeTier === 'pro' || activeTier === 'standard') {
+    if (activeTier === 'standard') {
       window.pctg.analyzeSystem().then(analysis => {
         if (analysis && analysis.commandsCount > 0) {
           console.log('[PCTG AI] System analyzed: ' + analysis.specs.cpu.model + ' | ' + analysis.specs.gpu.model + ' | ' + analysis.specs.ram.totalGB + 'GB RAM | ' + analysis.commandsCount + ' custom optimizations ready');
         }
-      }).catch(() => {});
+      }).catch(error => console.error('[PCTG AI] System analysis failed:', error));
     }
   }
 }
@@ -275,12 +431,45 @@ document.getElementById("activate-btn").onclick = async () => {
     const appContainer = document.getElementById("app");
     if (overlay) overlay.style.display = "none";
     if (appContainer) { appContainer.style.display = "block"; setTimeout(() => { appContainer.style.opacity = "1"; }, 10); }
-    checkLicense();
+        checkLicense().catch(error => console.error('[license] startup validation failed', error));
+        checkForAppUpdates();
+        setInterval(checkForAppUpdates, 6 * 60 * 60 * 1000);
   }
 };
 
 document.getElementById("license-input").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("activate-btn").click();
+});
+
+document.getElementById('btn-demo').addEventListener('click', async () => {
+  const result = await window.pctg.startDemo();
+  if (!result?.success) {
+    document.getElementById('license-error').innerText = result?.message || 'Demo mode could not be opened.';
+    return;
+  }
+  activeTier = null;
+  setDemoMode(true);
+  document.getElementById('license-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'block';
+  setTimeout(() => { app.style.opacity = '1'; }, 10);
+});
+
+document.getElementById('btn-demo-exit').addEventListener('click', () => {
+  setDemoMode(false);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('app').style.opacity = '0';
+  document.getElementById('license-screen').style.display = 'flex';
+});
+
+document.getElementById('demo-navigation').addEventListener('click', (event) => {
+  const link = event.target.closest('a[data-demo-settings]');
+  if (!link) return;
+  event.preventDefault();
+  const settingsButton = document.getElementById('btn-settings');
+  const settingsPanel = document.getElementById('settings-panel');
+  if (settingsPanel && settingsPanel.style.display !== 'block') settingsButton.click();
+  settingsPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 /*
@@ -455,6 +644,52 @@ function initOptimizer() {
       }
     };
   }
+  // Gaming Mode - safe, reversible tweaks only (R&D finding 1d9e37ba97).
+  // The result panel shows what was done, what was deliberately NOT done, and what
+  // could not be checked, because "it reported success" and "it did the safe thing"
+  // are different claims and only one of them is worth anything.
+  const btnGamingMode = document.getElementById('btn-gaming-mode');
+  const gamingResult = document.getElementById('gaming-mode-result');
+  if (btnGamingMode) {
+    btnGamingMode.onclick = async () => {
+      btnGamingMode.disabled = true;
+      const original = btnGamingMode.textContent;
+      btnGamingMode.textContent = 'Running Gaming Mode...';
+      log('Gaming Mode (safe tweaks only)');
+      try {
+        const disableStartup = !!document.getElementById('gaming-disable-startup')?.checked;
+        const result = await window.pctg.runGamingMode({ disableStartup });
+        const lines = [];
+        (result.performed || []).forEach(l => lines.push('✓ ' + l));
+        (result.skipped || []).forEach(l => lines.push('– ' + l));
+        (result.notChecked || []).forEach(l => lines.push('? Could not check: ' + l));
+        if (result.startup && result.startup.available) {
+          lines.push(`Startup entries read: ${result.startup.considered} found, ${result.startup.alreadyDisabled} already off.`);
+        }
+        lines.push('');
+        lines.push(result.disclaimer || '');
+        if (result.restorePointSuggested) {
+          lines.push('Recommended: create a restore point from the feature grid before playing.');
+        }
+        if (gamingResult) {
+          gamingResult.textContent = lines.join('\n');
+          gamingResult.style.display = 'block';
+        }
+        lines.filter(Boolean).forEach(l => log('  ' + l));
+        trackPhase('Gaming Mode');
+      } catch (e) {
+        if (gamingResult) {
+          gamingResult.textContent = 'Gaming Mode could not run: ' + (e?.message || e);
+          gamingResult.style.display = 'block';
+        }
+        log('Gaming Mode failed: ' + (e?.message || e));
+      } finally {
+        btnGamingMode.disabled = false;
+        btnGamingMode.textContent = original;
+      }
+    };
+  }
+
   // Export PDF
   const btnExportPdf = document.getElementById('btn-export-pdf');
   if (btnExportPdf) {
@@ -624,6 +859,284 @@ async function refreshStats() {
   } catch {}
 }
 
+function renderStartupApps(items) {
+  const list = document.getElementById('startup-app-list');
+  if (!list) return;
+  list.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No supported startup items were found.';
+    list.appendChild(empty);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement('label');
+    row.className = 'startup-app-row';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.startupId = item.id;
+    checkbox.dataset.enabled = String(item.enabled);
+    checkbox.disabled = !item.manageable || (item.enabled === false && item.available === false);
+    const name = document.createElement('span');
+    name.className = 'startup-app-name';
+    name.textContent = item.name;
+    const command = document.createElement('span');
+    command.className = 'startup-app-command';
+    command.textContent = (item.command || item.location || '').slice(0, 240);
+    command.title = item.command || item.location || '';
+    const state = document.createElement('span');
+    state.className = 'startup-app-state';
+    state.textContent = item.enabled ? 'Enabled' : item.available === false ? 'Backup missing' : 'Disabled by PCTG';
+    row.append(checkbox, name, command, state);
+    list.appendChild(row);
+  }
+}
+
+function renderHardwareTuningTools(result) {
+  const container = document.getElementById('hardware-tuning-tools');
+  if (!container) return;
+  container.replaceChildren();
+  const heading = document.createElement('h4');
+  heading.textContent = 'Hardware-matched tuning and performance tools';
+  container.appendChild(heading);
+  const safetyNote = document.createElement('p');
+  safetyNote.className = 'pro-recommendation-note';
+  safetyNote.textContent = 'Tools are matched to the detected CPU/GPU. Opening a tool or support page never applies settings automatically. Confirm exact model support and understand stability, temperature, warranty and data-loss risks before making manual clock, voltage, power or fan changes.';
+  container.appendChild(safetyNote);
+  if (result.availabilityError) {
+    const warning = document.createElement('p');
+    warning.className = 'pro-recommendation-note';
+    warning.textContent = `Could not confirm which utilities are installed: ${result.availabilityError}. The buttons open the vendor support pages instead.`;
+    container.appendChild(warning);
+  }
+
+  if (!result.tools.length) {
+    const unavailable = document.createElement('p');
+    unavailable.className = 'pro-recommendation-note';
+    unavailable.textContent = 'The CPU or graphics model could not be identified confidently, so no vendor tuning utility is recommended.';
+    container.appendChild(unavailable);
+    return;
+  }
+
+  for (const tool of result.tools) {
+    const card = document.createElement('div');
+    card.className = 'hardware-tool-card';
+    const details = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = tool.label;
+    const match = document.createElement('span');
+    match.className = 'hardware-tool-match';
+    match.textContent = tool.kind === 'cpu' ? `Matched to ${result.cpuVendor.toUpperCase()} CPU` :
+      tool.kind === 'gpu' ? `Matched to ${result.gpuVendor.toUpperCase()} graphics` : 'Performance measurement only';
+    const note = document.createElement('p');
+    note.textContent = `${tool.compatibility} ${tool.guidance}`;
+    details.append(name, match, note);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn';
+    button.textContent = tool.installed === true ? 'Open utility' : 'Open official support page';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        const opened = await window.pctg.openHardwareTuningTool(tool.id);
+        button.textContent = opened.launched ? 'Utility opened' : 'Official support page opened';
+        if (opened.warning) note.textContent = `${tool.compatibility} ${tool.guidance} ${opened.warning}`;
+      } catch (error) {
+        note.textContent = `${tool.compatibility} ${tool.guidance} Could not open it: ${error.message || error}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+    const supportButton = document.createElement('button');
+    supportButton.type = 'button';
+    supportButton.className = 'btn';
+    supportButton.textContent = 'Official compatibility info';
+    supportButton.addEventListener('click', async () => {
+      supportButton.disabled = true;
+      try {
+        await window.pctg.openUrl(tool.url);
+      } catch (error) {
+        note.textContent = `${tool.compatibility} ${tool.guidance} Could not open the vendor page: ${error.message || error}`;
+      } finally {
+        supportButton.disabled = false;
+      }
+    });
+    const actions = document.createElement('div');
+    actions.className = 'hardware-tool-actions';
+    actions.append(button, supportButton);
+    card.append(details, actions);
+    container.appendChild(card);
+  }
+}
+
+async function refreshStartupApps() {
+  const status = document.getElementById('startup-manager-status');
+  if (status) status.textContent = 'Reading Windows startup entries...';
+  try {
+    const items = await window.pctg.getStartupApps();
+    renderStartupApps(items);
+    if (status) status.textContent = `${items.length} startup item${items.length === 1 ? '' : 's'} found. Nothing was changed.`;
+    return items;
+  } catch (error) {
+    if (status) status.textContent = `Could not read startup items: ${error.message || error}`;
+    throw error;
+  }
+}
+
+function selectedStartupItems(expectedEnabled) {
+  return [...document.querySelectorAll('#startup-app-list input[data-startup-id]:checked')]
+    .filter(input => input.dataset.enabled === String(expectedEnabled))
+    .map(input => input.dataset.startupId);
+}
+
+async function changeStartupItems(ids, enabled) {
+  const failures = [];
+  let changed = 0;
+  for (const id of ids) {
+    try {
+      await window.pctg.setStartupAppEnabled({ id, enabled });
+      changed++;
+    } catch (error) {
+      failures.push(error.message || String(error));
+    }
+  }
+  try {
+    await refreshStartupApps();
+  } catch (error) {
+    failures.push(error.message || String(error));
+  }
+  return { changed, failures };
+}
+
+function hardwareFingerprint(specs) {
+  return JSON.stringify({
+    cpu: specs.cpu.model,
+    cores: specs.cpu.cores,
+    ramGB: specs.ram.totalGB,
+    gpu: specs.gpu.model,
+    os: specs.os.release
+  });
+}
+
+function renderProBenchmarkComparison() {
+  const box = document.getElementById('pro-benchmark-comparison');
+  if (!box || !benchBefore || !benchAfter) return;
+  const improvement = calcImprovement(benchBefore, benchAfter);
+  if (!improvement) return;
+  box.replaceChildren();
+  const title = document.createElement('strong');
+  title.textContent = 'Before and after comparison';
+  box.appendChild(title);
+  const rows = [
+    ['Average FPS', `${benchBefore.fps.avg} → ${benchAfter.fps.avg} (${improvement.fps >= 0 ? '+' : ''}${improvement.fps}%)`],
+    ['Network response', `${benchBefore.net.avg} ms → ${benchAfter.net.avg} ms (${improvement.net >= 0 ? '+' : ''}${improvement.net}%)`]
+  ];
+  for (const [label, value] of rows) {
+    const row = document.createElement('div');
+    row.className = 'result-row';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const result = document.createElement('span');
+    result.className = 'result-val';
+    result.textContent = value;
+    row.append(name, result);
+    box.appendChild(row);
+  }
+  const note = document.createElement('p');
+  note.textContent = 'These are the app’s repeatable canvas-rendering and network-response tests, not an in-game FPS guarantee.';
+  box.appendChild(note);
+}
+
+async function startProLaunchFlow() {
+  const status = document.getElementById('pro-first-run-status');
+  const summary = document.getElementById('pro-system-summary');
+  const applyButton = document.getElementById('pro-apply-recommendations');
+  const skipButton = document.getElementById('pro-skip-recommendations');
+  const retryButton = document.getElementById('pro-retry-scan');
+  if (!status || !applyButton || !skipButton) return;
+  applyButton.disabled = true;
+  skipButton.disabled = true;
+  if (retryButton) retryButton.style.display = 'none';
+  status.textContent = 'Scanning this computer before the baseline benchmark...';
+
+  try {
+    const analysis = await window.pctg.analyzeSystem({ refresh: true });
+    if (!analysis || !analysis.specs || !analysis.specs.cpu || !analysis.specs.ram || !analysis.specs.gpu) {
+      throw new Error('The system scan returned incomplete hardware information.');
+    }
+    const specs = analysis.specs;
+    const stats = await window.pctg.getStats();
+    const [apps, tuningTools] = await Promise.all([
+      refreshStartupApps(),
+      window.pctg.getHardwareTuningTools()
+    ]);
+    renderHardwareTuningTools(tuningTools);
+    const fingerprint = hardwareFingerprint(specs);
+    if (localStorage.getItem('pctg_bench_hardware') !== fingerprint) {
+      if (benchBefore || benchAfter) {
+        localStorage.removeItem('pctg_bench_before');
+        localStorage.removeItem('pctg_bench_after');
+        benchBefore = null;
+        benchAfter = null;
+        const log = document.getElementById('log');
+        if (log) log.textContent += '\nHardware changed or the prior benchmark hardware was unknown; starting a new comparison pair.\n';
+      }
+      localStorage.setItem('pctg_bench_hardware', fingerprint);
+    }
+
+    if (summary) {
+      summary.textContent = `${specs.cpu.model} (${specs.cpu.cores} logical cores) · ${specs.ram.totalGB} GB RAM · ${specs.gpu.model} · Windows ${specs.os.release}. Current memory use: ${stats.memory.percent}%.`;
+    }
+    const recommendation = document.getElementById('pro-startup-recommendations');
+    if (recommendation) {
+      recommendation.textContent = specs.ram.totalGB <= 16 || stats.memory.percent >= 80
+        ? 'Recommendation: review startup apps because this system has limited memory headroom. Select only apps you recognise and do not need at sign-in; nothing is preselected or changed automatically.'
+        : 'Review startup apps below if you want to reduce sign-in/background activity. Hardware and current memory use are shown above; nothing is preselected or changed automatically.';
+      recommendation.className = 'pro-recommendation-note';
+    }
+
+    if (!benchBefore) {
+      status.textContent = 'System scan complete. Running the initial baseline benchmark...';
+      const saved = await runAllBenchmarks('Initial Baseline Benchmark (Before)', 'before');
+      if (!saved) throw new Error('The initial benchmark did not complete. Retry the system scan to try again.');
+    }
+
+    if (benchAfter) {
+      status.textContent = 'This computer already has a completed before-and-after run. Run a new comparison only after resetting the benchmark pair.';
+      renderProBenchmarkComparison();
+      return;
+    }
+    if (!apps.some(item => item.enabled && item.manageable)) {
+      status.textContent = 'System scan and baseline are complete. No supported, enabled startup items are available to change; run the final benchmark to compare without changes.';
+    } else {
+      status.textContent = 'System scan and baseline are complete. Select any startup apps you want to disable, or skip changes. Your selection is applied only after you press the button.';
+    }
+    applyButton.disabled = false;
+    skipButton.disabled = false;
+  } catch (error) {
+    status.textContent = `Pro setup could not complete: ${error.message || error}`;
+    if (retryButton) retryButton.style.display = 'inline-block';
+  }
+}
+
+async function finishProBenchmark(label) {
+  const status = document.getElementById('pro-first-run-status');
+  const applyButton = document.getElementById('pro-apply-recommendations');
+  const skipButton = document.getElementById('pro-skip-recommendations');
+  applyButton.disabled = true;
+  skipButton.disabled = true;
+  status.textContent = 'Running the final benchmark...';
+  const saved = await runAllBenchmarks(label, 'after');
+  if (saved) {
+    status.textContent = 'Final benchmark complete. The before-and-after results are shown below.';
+    renderProBenchmarkComparison();
+  } else {
+    status.textContent = 'The final benchmark failed. Your baseline is preserved; check the log and retry the benchmark.';
+    applyButton.disabled = false;
+    skipButton.disabled = false;
+  }
+}
+
 // ======== Benchmark ========
 const BENCH_DURATION = 6000;
 let benchBefore = JSON.parse(localStorage.getItem('pctg_bench_before') || 'null');
@@ -631,6 +1144,47 @@ let benchAfter = JSON.parse(localStorage.getItem('pctg_bench_after') || 'null');
 
 function initBenchmarks() {
   document.getElementById('btn-bench-full').onclick = () => runAllBenchmarks('Full Benchmark (FPS + Network)');
+  document.getElementById('startup-refresh').onclick = () => refreshStartupApps().catch(() => {});
+  document.getElementById('startup-disable-selected').onclick = async () => {
+    const status = document.getElementById('startup-manager-status');
+    const ids = selectedStartupItems(true);
+    if (!ids.length) { status.textContent = 'Select one or more enabled startup items first.'; return; }
+    status.textContent = 'Disabling selected startup items...';
+    try {
+      const result = await changeStartupItems(ids, false);
+      status.textContent = `${result.changed} item${result.changed === 1 ? '' : 's'} disabled.${result.failures.length ? ` Issues: ${result.failures.join('; ')}` : ''}`;
+    } catch (error) {
+      status.textContent = `Could not apply startup changes: ${error.message || error}`;
+    }
+  };
+  document.getElementById('startup-restore-selected').onclick = async () => {
+    const status = document.getElementById('startup-manager-status');
+    const ids = selectedStartupItems(false);
+    if (!ids.length) { status.textContent = 'Select one or more disabled items first.'; return; }
+    status.textContent = 'Restoring selected startup items...';
+    try {
+      const result = await changeStartupItems(ids, true);
+      status.textContent = `${result.changed} item${result.changed === 1 ? '' : 's'} restored.${result.failures.length ? ` Issues: ${result.failures.join('; ')}` : ''}`;
+    } catch (error) {
+      status.textContent = `Could not restore startup items: ${error.message || error}`;
+    }
+  };
+  document.getElementById('pro-apply-recommendations').onclick = async () => {
+    const ids = selectedStartupItems(true);
+    if (!ids.length) {
+      document.getElementById('pro-first-run-status').textContent = 'Select at least one enabled startup item, or choose “Skip changes & run final benchmark”.';
+      return;
+    }
+    const status = document.getElementById('pro-first-run-status');
+    status.textContent = 'Applying only the startup items you selected...';
+    const result = await changeStartupItems(ids, false);
+    if (result.failures.length) {
+      status.textContent = `${result.changed} item${result.changed === 1 ? '' : 's'} disabled. Some selected changes failed: ${result.failures.join('; ')}. Running the final benchmark for the changes that succeeded.`;
+    }
+    await finishProBenchmark('Final Benchmark (After Selected Startup Changes)');
+  };
+  document.getElementById('pro-skip-recommendations').onclick = () => finishProBenchmark('Final Benchmark (After Skipping Changes)');
+  document.getElementById('pro-retry-scan').onclick = () => startProLaunchFlow();
   document.getElementById('btn-bench-fps').onclick = async () => {
     const logEl = document.getElementById('log');
     if (logEl) logEl.textContent += '\nRunning FPS Benchmark...\n';
@@ -717,9 +1271,9 @@ function calcImprovement(before, after) {
   return { fps: fpsImp, net: netImp, overall: Math.round((fpsImp + Math.max(netImp, 0)) / 2) };
 }
 
-async function runAllBenchmarks(label) {
+async function runAllBenchmarks(label, mode) {
   const logEl = document.getElementById('log');
-  if (!logEl) return;
+  if (!logEl) return false;
   logEl.textContent += '\nRunning ' + label + '...\n';
   try {
     const fps = await runFpsBenchmark();
@@ -727,19 +1281,27 @@ async function runAllBenchmarks(label) {
     const net = await runNetworkBenchmark();
     logEl.textContent += '  Network: ' + net.avg + 'ms\n';
     const result = { fps, net, time: Date.now() };
-    if (!benchBefore) {
+    if (mode === 'after' && !benchBefore) throw new Error('Cannot save an after benchmark without a baseline.');
+    if (mode === 'before' || (!benchBefore && mode !== 'after')) {
       benchBefore = result;
       localStorage.setItem('pctg_bench_before', JSON.stringify(benchBefore));
-      logEl.textContent += 'Baseline saved. Run optimizations, then benchmark again to see gains.\n';
+      if (mode === 'before') {
+        benchAfter = null;
+        localStorage.removeItem('pctg_bench_after');
+      }
+      logEl.textContent += 'Baseline saved.\n';
     } else {
       benchAfter = result;
       localStorage.setItem('pctg_bench_after', JSON.stringify(benchAfter));
       logEl.textContent += 'After benchmark saved.\n';
       showBenchResults(fps, net);
       refreshReport();
+      renderProBenchmarkComparison();
     }
+    return true;
   } catch (e) {
     logEl.textContent += 'Benchmark error: ' + (e.message || e) + '\n';
+    return false;
   }
 }
 
@@ -781,6 +1343,7 @@ function refreshReport() {
 
 // ======== Keyboard shortcuts ========
 document.addEventListener('keydown', (e) => {
+  if (demoMode) return;
   if (e.ctrlKey && e.shiftKey && e.key === 'R') {
     localStorage.removeItem('pctg_bench_before');
     localStorage.removeItem('pctg_bench_after');

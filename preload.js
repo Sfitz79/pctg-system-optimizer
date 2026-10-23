@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('pctg', {
   runPhase: (phase) => ipcRenderer.invoke('pctg:run-phase', phase),
   checkLicense: () => ipcRenderer.invoke('pctg:check-license'),
+  startDemo: () => ipcRenderer.invoke('pctg:start-demo'),
+  demoSystemScan: () => ipcRenderer.invoke('pctg:demo-system-scan'),
   activateLicense: (key) => ipcRenderer.invoke('pctg:activate-license', key),
   checkUpdate: () => ipcRenderer.invoke('pctg:check-update'),
   downloadUpdate: (latest) => ipcRenderer.invoke('pctg:download-update', latest),
@@ -16,7 +18,12 @@ contextBridge.exposeInMainWorld('pctg', {
   openUrl: (url) => ipcRenderer.invoke('pctg:open-url', url),
   runToggle: (data) => ipcRenderer.invoke('pctg:run-toggle', data),
   getDiskSpace: () => ipcRenderer.invoke('pctg:get-disk-space'),
-  analyzeSystem: () => ipcRenderer.invoke('pctg:analyze-system'),
+  getStartupApps: () => ipcRenderer.invoke('pctg:get-startup-apps'),
+  setStartupAppEnabled: (data) => ipcRenderer.invoke('pctg:set-startup-app-enabled', data),
+  runGamingMode: (options) => ipcRenderer.invoke('pctg:gaming-mode', options || {}),
+  getHardwareTuningTools: () => ipcRenderer.invoke('pctg:get-hardware-tuning-tools'),
+  openHardwareTuningTool: (toolId) => ipcRenderer.invoke('pctg:open-hardware-tuning-tool', toolId),
+  analyzeSystem: (options) => ipcRenderer.invoke('pctg:analyze-system', options),
   getSystemAnalysis: () => ipcRenderer.invoke('pctg:get-system-analysis'),
   applyCustomTweaks: (script) => ipcRenderer.invoke('pctg:apply-custom-tweaks', script),
 

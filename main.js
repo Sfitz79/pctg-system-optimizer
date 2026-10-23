@@ -8,9 +8,13 @@ const { spawn, exec } = require('child_process');
 
 const { checkInternalUnlock, internalUnlockEnabled } = require('./lib/internalUnlock.js');
 const { IS_ADMIN, PRODUCT_NAME, VARIANT, variantPath } = require('./lib/buildVariant.js');
+const { createStartupManager } = require('./lib/startup-manager.js');
+const { getHardwareTuningTools, findInstalledToolApp } = require('./lib/hardware-tuning.js');
+const { getDemoRecommendations } = require('./lib/demoRecommendations.js');
+const { isVersionNewer, isTrustedInstallerUrl, parseGitHubRelease } = require('./lib/updateManifest.js');
 
 const VALIDATION_API = 'https://pctgopt.pctechguyonline.com/api/validate';
-const UPDATE_MANIFEST = 'https://pctg-system-optimizer.vercel.app/updates/latest.json';
+const UPDATE_RELEASE_API = 'https://api.github.com/repos/Sfitz79/pctg-system-optimizer/releases/latest';
 
 if (process.platform === 'win32' && !process.argv.includes('--elevated')) {
   const result = require('child_process').spawnSync('powershell.exe', [
@@ -32,6 +36,13 @@ const userDataPath = app.getPath('userData');
 const licensePath = path.join(userDataPath, 'license.json');
 const keysDbPath = path.join(userDataPath, 'keys.json');
 const analyticsPath = path.join(userDataPath, 'analytics.json');
+const startupManager = createStartupManager({
+  userDataPath,
+  startupFolders: [
+    path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup'),
+    path.join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+  ]
+});
 
 const PAYPAL_URL = "https://www.paypal.me/pctechguyonline305";
 
@@ -146,6 +157,7 @@ const TIERS = {
 
 let mainWindow;
 let activeTier = null;
+let demoMode = false;
 
 function seedDefaults() {
   const srcKeys = path.join(__dirname, 'license', 'keys.json');
@@ -397,21 +409,116 @@ app.on('window-all-closed', () => {
 });
 
 function checkForUpdates(callback) {
-  const req = https.get(UPDATE_MANIFEST, (res) => {
+  let settled = false;
+  const finish = (error, result) => {
+    if (settled) return;
+    settled = true;
+    callback(error, result);
+  };
+  const req = https.get(UPDATE_RELEASE_API, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': `PCTG-Optimizer/${currentVersion}`
+    }
+  }, (res) => {
     let data = "";
-    res.on("data", chunk => data += chunk);
+    if (res.statusCode !== 200) {
+      res.resume();
+      finish(new Error(`Update manifest returned HTTP ${res.statusCode}.`));
+      return;
+    }
+    res.on("data", chunk => {
+      data += chunk;
+      if (data.length > 1024 * 1024) req.destroy(new Error('Update manifest is too large.'));
+    });
     res.on("end", () => {
       try {
-        const latest = JSON.parse(data);
-        const updateAvailable = latest.version !== currentVersion;
-        callback(null, { updateAvailable, latest });
+        const release = JSON.parse(data);
+        const latest = parseGitHubRelease(release);
+        const updateAvailable = isVersionNewer(latest.version, currentVersion);
+        finish(null, { updateAvailable, latest });
       } catch (e) {
-        callback(e);
+        finish(e);
       }
     });
+    res.on('error', finish);
   });
-  req.on("error", err => callback(err));
+  req.on("error", err => finish(err));
   req.setTimeout(10000, () => { req.destroy(new Error('Update check timed out')); });
+}
+
+function downloadInstaller(value, destination) {
+  const temporaryPath = `${destination}.part`;
+  const allowedHosts = new Set(['github.com', 'release-assets.githubusercontent.com', 'objects.githubusercontent.com']);
+
+  const requestDownload = (urlValue, redirects = 0) => new Promise((resolve, reject) => {
+    const url = new URL(urlValue);
+    if (url.protocol !== 'https:' || !allowedHosts.has(url.hostname) || redirects > 5) {
+      reject(new Error('The update download redirected to an untrusted location.'));
+      return;
+    }
+
+    const request = https.get(url, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
+        response.resume();
+        requestDownload(new URL(response.headers.location, url).href, redirects + 1).then(resolve, reject);
+        return;
+      }
+      if (response.statusCode !== 200) {
+        response.resume();
+        reject(new Error(`Update download returned HTTP ${response.statusCode}.`));
+        return;
+      }
+      const contentLength = Number(response.headers['content-length'] || 0);
+      if (contentLength > 500 * 1024 * 1024) {
+        response.destroy(new Error('The update installer exceeds the allowed download size.'));
+        reject(new Error('The update installer exceeds the allowed download size.'));
+        return;
+      }
+
+      const file = fs.createWriteStream(temporaryPath);
+      let receivedBytes = 0;
+      let finished = false;
+      const fail = (error) => {
+        if (finished) return;
+        finished = true;
+        file.destroy();
+        try { fs.unlinkSync(temporaryPath); } catch {}
+        reject(error);
+      };
+      response.on('data', (chunk) => {
+        receivedBytes += chunk.length;
+        if (receivedBytes > 500 * 1024 * 1024) response.destroy(new Error('The update installer exceeds the allowed download size.'));
+      });
+      response.on('error', fail);
+      response.on('aborted', () => fail(new Error('The update download was interrupted.')));
+      response.pipe(file);
+      file.on('finish', () => file.close(() => {
+        if (finished) return;
+        try {
+          const descriptor = fs.openSync(temporaryPath, 'r');
+          const signature = Buffer.alloc(2);
+          fs.readSync(descriptor, signature, 0, 2, 0);
+          fs.closeSync(descriptor);
+          if (signature.toString('ascii') !== 'MZ') throw new Error('The downloaded update is not a Windows installer.');
+          fs.renameSync(temporaryPath, destination);
+          finished = true;
+          resolve();
+        } catch (error) {
+          fail(error);
+        }
+      }));
+      file.on('error', fail);
+    });
+
+    request.on('error', (error) => {
+      try { fs.unlinkSync(temporaryPath); } catch {}
+      reject(error);
+    });
+    request.setTimeout(120000, () => request.destroy(new Error('Update download timed out.')));
+  });
+
+  return requestDownload(value);
 }
 
 function hasAccess(phase) {
@@ -422,6 +529,12 @@ function hasAccess(phase) {
   // tier now comes from the server. Fail closed.
   if (!activeTier || !TIERS[activeTier]) return false;
   return TIERS[activeTier].unlocks.includes(phase);
+}
+
+function requireLicensedAction(action) {
+  if (demoMode || !activeTier || !TIERS[activeTier]) {
+    throw new Error(`${action} requires an activated paid licence.`);
+  }
 }
 
 function ensureScriptsExtracted() {
@@ -480,7 +593,7 @@ function runPs(scriptName, label) {
 ipcMain.handle("pctg:check-update", () => {
   return new Promise((resolve) => {
     checkForUpdates((err, result) => {
-      if (err) resolve({ updateAvailable: false });
+      if (err) resolve({ updateAvailable: false, error: err.message || 'Update check failed.' });
       else resolve(result);
     });
   });
@@ -534,6 +647,7 @@ ipcMain.handle('pctg:check-license', async () => {
       startupLog('admin edition licence write failed: ' + (e && e.message ? e.message : e));
     }
     activeTier = 'pro';
+    demoMode = false;
     startupLog('check-license: ADMIN EDITION auto-granted Pro (no licence, no server call)');
     return { valid: true, tier: 'pro', internal: true, admin: true };
   }
@@ -621,7 +735,15 @@ ipcMain.handle('pctg:check-license', async () => {
   // Authoritative success - record it so the offline window has a starting point.
   writeLicense({ ...local, tier: result.tier, serverVerifiedAt: Date.now() });
   activeTier = result.tier;
+  demoMode = false;
   return { valid: true, tier: result.tier, offline: false };
+});
+
+ipcMain.handle('pctg:start-demo', () => {
+  if (activeTier && TIERS[activeTier]) return { success: false, message: 'An active licence is already available.' };
+  activeTier = null;
+  demoMode = true;
+  return { success: true };
 });
 
 ipcMain.handle('pctg:activate-license', async (event, key) => {
@@ -655,6 +777,7 @@ ipcMain.handle('pctg:activate-license', async (event, key) => {
         internal: true,
       });
       activeTier = internal.tier;
+      demoMode = false;
       return { success: true, tier: internal.tier, internal: true };
     }
 
@@ -685,6 +808,7 @@ ipcMain.handle('pctg:activate-license', async (event, key) => {
         serverVerifiedAt: Date.now()
       });
       activeTier = result.tier;
+      demoMode = false;
       return { success: true, tier: result.tier };
     }
 
@@ -805,12 +929,201 @@ ipcMain.handle('pctg:get-disk-space', () => {
   } catch { return { free: 0, used: 0 }; }
 });
 
+ipcMain.handle('pctg:get-startup-apps', () => {
+  if (activeTier !== 'pro') throw new Error('Startup Apps manager requires the Pro Gaming tier.');
+  return startupManager.listStartupApps();
+});
+
+ipcMain.handle('pctg:set-startup-app-enabled', (_event, { id, enabled } = {}) => {
+  if (activeTier !== 'pro') throw new Error('Startup Apps manager requires the Pro Gaming tier.');
+  return startupManager.setStartupAppEnabled(id, enabled);
+});
+
+// Gaming Mode (R&D finding 1d9e37ba97, "Add 'Safe Gaming Tweaks' Section with
+// Disclaimer"). The finding asks for a button that runs ONLY pre-validated safe
+// tweaks and does NOT touch aggressive registry edits. Three deliberate choices,
+// each of which is a decision rather than an omission:
+//
+//   1. HAGS is REPORTED, NEVER FLIPPED. HAGS is a Windows display setting that
+//      needs a reboot, it only exists on Windows 10 2004+/11, and some older
+//      drivers regress without it. A previous review already moved HAGS to
+//      detection-and-display for exactly this reason, so this endpoint reports
+//      the real value and leaves it alone.
+//   2. Startup changes are OPTIONAL and DEFAULT OFF, and every one is reversible
+//      through the startup manager's own backup file - nothing is deleted.
+//   3. A restore point is offered, never forced silently. Skipping it is a
+//      choice the customer makes, and the response says so out loud.
+//
+// If anything here cannot be read, the endpoint still returns what it knows and
+// lists what it could not check, rather than failing the whole button.
+const GAMING_MODE_CONSERVATIVE_DEFAULTS = [
+  /^onedrive/i, /^teams/i, /^zoom/i, /^discord/i, /^steam/i, /^epic/i, /^skype/i,
+  /^xbox/i, /^gamereporter/i, /^nvidia/i, /^nahimic/i, /^obs/i, /^overwolf/i,
+  /^discord/i, /^spotify/i, /^todo/i, /^mail/i
+];
+
+function readHagsState() {
+  // HKEY_CURRENT_USER\System\GameConfigStore -> GameDVR_HideUserMode? The real
+  // switch is HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\GraphicsDrivers
+  // -> HwSchMode: 1 = off, 2 = on. Read-only, no writes, ever.
+  if (process.platform !== 'win32') return { supported: false, enabled: null, source: 'not-windows' };
+  try {
+    const { execFileSync } = require('child_process');
+    const out = execFileSync('reg.exe', [
+      'query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers', '/v', 'HwSchMode'
+    ], { encoding: 'utf8', windowsHide: true, timeout: 5000 });
+    const match = /HwSchMode\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(out);
+    if (!match) return { supported: true, enabled: false, source: 'registry-value-absent', note: 'HwSchMode is not set, so hardware-accelerated GPU scheduling is off.' };
+    const value = parseInt(match[1], 16);
+    return { supported: true, enabled: value === 2, value, source: 'registry' };
+  } catch (error) {
+    return { supported: true, enabled: null, source: 'unreadable', note: 'Could not read the HAGS setting: ' + (error.message || error) };
+  }
+}
+
+ipcMain.handle('pctg:gaming-mode', async (_event, { disableStartup = false } = {}) => {
+  if (!hasAccess('fps')) {
+    throw new Error(`Your license does not include "fps". Purchase the required tier at ${PAYPAL_URL}`);
+  }
+  const performed = [];
+  const skipped = [];
+  const notChecked = [];
+
+  // --- 1. HAGS: reported, never written -----------------------------------------
+  let hags = { supported: false, enabled: null, source: 'not-windows' };
+  try { hags = readHagsState(); } catch (error) { hags = { supported: true, enabled: null, source: 'unreadable', note: String(error.message || error) }; }
+  if (hags.enabled === null) notChecked.push('Hardware-accelerated GPU scheduling (HAGS)');
+  else if (hags.enabled) performed.push('Hardware-accelerated GPU scheduling is already on - left as it is.');
+  else performed.push('Hardware-accelerated GPU scheduling is off. Left as it is: switching it needs a reboot and can regress on older drivers.');
+
+  // --- 2. Startup apps: read always, change only when asked ----------------------
+  let startup = { considered: 0, alreadyDisabled: 0, disabled: [], available: false };
+  try {
+    const items = startupManager.listStartupApps();
+    const list = Array.isArray(items) ? items : (Array.isArray(items?.items) ? items.items : []);
+    startup.considered = list.length;
+    startup.available = true;
+    if (disableStartup) {
+      for (const item of list) {
+        if (item.enabled === false) { startup.alreadyDisabled++; continue; }
+        if (item.manageable === false) { skipped.push(`${item.name} is not a startup entry this app can safely manage.`); continue; }
+        if (!GAMING_MODE_CONSERVATIVE_DEFAULTS.some((re) => re.test(String(item.name || '')))) continue;
+        try {
+          await startupManager.setStartupAppEnabled(item.id, false);
+          startup.disabled.push(item.name);
+        } catch (error) {
+          notChecked.push(`${item.name} could not be disabled (${error.message || error})`);
+        }
+      }
+      if (startup.disabled.length) {
+        performed.push(`Disabled ${startup.disabled.length} known background launcher(s): ${startup.disabled.join(', ')}.`);
+      } else {
+        performed.push('No known background launchers needed disabling.');
+      }
+    } else {
+      performed.push(`Startup entries read (${list.length} found) and left untouched - you chose review-only.`);
+    }
+  } catch (error) {
+    // Not being able to read startup entries must NOT sink the whole button.
+    startup.available = false;
+    notChecked.push('Startup entries could not be read: ' + (error.message || error));
+  }
+
+  trackEvent('phase', 'gaming-mode');
+  return {
+    ok: true,
+    hags,
+    startup,
+    performed,
+    skipped,
+    notChecked,
+    disclaimer:
+      'Gaming Mode runs only pre-validated, reversible changes. It does not edit the registry aggressively, and it does not increase your frame rate on older hardware - what it does is stop background launchers from competing for resources during a session. Every startup change can be switched back on from the Startup Apps list, and we recommend a restore point first.',
+    restorePointSuggested: true,
+  };
+});
+
+function getInstalledTuningApps() {
+  if (process.platform !== 'win32') return [];
+  try {
+    const output = require('child_process').execFileSync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress'
+    ], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+    const parsed = JSON.parse(output.trim().replace(/^\uFEFF/, '') || '[]');
+    return (Array.isArray(parsed) ? parsed : [parsed])
+      .filter(app => app && typeof app.Name === 'string')
+      .map(app => ({ name: app.Name, appId: app.AppID }));
+  } catch (error) {
+    throw new Error(`Could not check installed tuning utilities: ${error.message}`);
+  }
+}
+
+ipcMain.handle('pctg:get-hardware-tuning-tools', async () => {
+  if (activeTier !== 'pro') throw new Error('Hardware tuning guidance requires the Pro Gaming tier.');
+  const analysis = getCachedAnalysis() || await analyzeSystem();
+  let installedApps = null;
+  let availabilityError = null;
+  try {
+    installedApps = getInstalledTuningApps();
+  } catch (error) {
+    availabilityError = error.message;
+  }
+  const result = getHardwareTuningTools(analysis.specs);
+  return {
+    ...result,
+    tools: result.tools.map(tool => ({
+      ...tool,
+      installed: installedApps ? Boolean(findInstalledToolApp(installedApps, tool.id)) : null
+    })),
+    availabilityError
+  };
+});
+
+ipcMain.handle('pctg:open-hardware-tuning-tool', async (_event, toolId) => {
+  if (activeTier !== 'pro') throw new Error('Hardware tuning guidance requires the Pro Gaming tier.');
+  const analysis = getCachedAnalysis() || await analyzeSystem();
+  const result = getHardwareTuningTools(analysis.specs);
+  const tool = result.tools.find(candidate => candidate.id === toolId);
+  if (!tool) throw new Error('That tuning utility is not recommended for the detected hardware.');
+
+  if (process.platform === 'win32') {
+    let installed;
+    try {
+      installed = findInstalledToolApp(getInstalledTuningApps(), toolId);
+    } catch (error) {
+      await shell.openExternal(tool.url);
+      return { launched: false, installed: false, openedUrl: true, warning: error.message };
+    }
+    if (installed) {
+      require('child_process').execFileSync('explorer.exe', [
+        `shell:AppsFolder\\${installed.appId}`
+      ], { windowsHide: true, timeout: 5000 });
+      return { launched: true, installed: true };
+    }
+  }
+
+  await shell.openExternal(tool.url);
+  return { launched: false, installed: false, openedUrl: true };
+});
+
 ipcMain.handle('pctg:get-analytics', () => initAnalytics());
 
-ipcMain.handle('pctg:analyze-system', async () => {
-  const cached = getCachedAnalysis();
+ipcMain.handle('pctg:analyze-system', async (_event, { refresh = false } = {}) => {
+  const cached = refresh ? null : getCachedAnalysis();
   if (cached) return cached;
   return await analyzeSystem();
+});
+
+ipcMain.handle('pctg:demo-system-scan', async () => {
+  const specs = getDetailedSpecs();
+  return {
+    scannedAt: new Date().toISOString(),
+    specs,
+    recommendations: getDemoRecommendations(specs)
+  };
 });
 
 ipcMain.handle('pctg:get-system-analysis', () => {
@@ -829,24 +1142,32 @@ ipcMain.handle('pctg:open-url', (event, url) => {
   shell.openExternal(url);
 });
 
-ipcMain.handle("pctg:download-update", (event, latest) => {
-  trackEvent('update');
-  exec("powershell.exe -Command Checkpoint-Computer -Description 'PCTG Update Restore Point' -RestorePointType MODIFY_SETTINGS");
+ipcMain.handle("pctg:download-update", async () => {
+  requireLicensedAction('Updating the app');
+  if (process.platform !== 'win32') throw new Error('The Windows installer is only available on Windows.');
 
-  const updatePath = path.join(userDataPath, "update.exe");
-  const file = fs.createWriteStream(updatePath);
-
-  const req = https.get(latest.url, (response) => {
-    response.pipe(file);
-    file.on("finish", () => {
-      file.close(() => {
-        exec(updatePath + " /silent", () => {
-          app.quit();
-        });
-      });
-    });
+  const update = await new Promise((resolve, reject) => {
+    checkForUpdates((error, result) => error ? reject(error) : resolve(result));
   });
-  req.setTimeout(120000, () => { req.destroy(new Error('Update download timed out')); });
+  if (!update.updateAvailable) return { success: false, message: 'The app is already up to date.' };
+  if (!isTrustedInstallerUrl(update.latest.url)) throw new Error('The update installer URL is not trusted.');
+
+  trackEvent('update');
+  const updatePath = path.join(userDataPath, 'PCTG-Optimizer-Setup.exe');
+  await downloadInstaller(update.latest.url, updatePath);
+
+  const installer = spawn(updatePath, ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-'], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true
+  });
+  await new Promise((resolve, reject) => {
+    installer.once('spawn', resolve);
+    installer.once('error', reject);
+  });
+  installer.unref();
+  app.quit();
+  return { success: true };
 });
 
 const { generateReport } = require('./report/report');
@@ -854,6 +1175,7 @@ const { getSystemInfo } = require('./report/systemInfo');
 const { analyzeSystem, applyOptimizations, getCachedAnalysis } = require('./report/system-analyzer');
 
 ipcMain.handle('pctg:export-pdf', async (event, reportData) => {
+  requireLicensedAction('Exporting reports');
   trackEvent('export');
   const sysInfo = getSystemInfo();
   const data = { ...sysInfo, ...reportData };
@@ -868,6 +1190,7 @@ ipcMain.handle('pctg:export-pdf', async (event, reportData) => {
 });
 
 ipcMain.handle('pctg:generate-report', async (event, phases) => {
+  requireLicensedAction('Generating reports');
   const sys = getSystemInfo();
 
   const data = {
