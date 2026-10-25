@@ -43,6 +43,35 @@ export const TIERS = Object.freeze({
   deep: { price: 10, currency: 'GBP', label: 'Deep Optimize module' },
 });
 
+function matchesTierPurchase(purchaseUnit, tier) {
+  const details = TIERS[tier];
+  if (!details || !purchaseUnit) return false;
+  const expectedId = `PCTG-${tier.toUpperCase()}`;
+  const idMatches = purchaseUnit.reference_id === expectedId || purchaseUnit.custom_id === expectedId;
+  const amount = purchaseUnit.amount;
+  return idMatches
+    && amount?.currency_code === details.currency
+    && Math.round(Number(amount.value) * 100) === Math.round(details.price * 100);
+}
+
+export function isExpectedPayPalOrder(order, tier) {
+  if (!['APPROVED', 'COMPLETED'].includes(order?.status)) return false;
+  const units = Array.isArray(order.purchase_units) ? order.purchase_units : [];
+  return units.length === 1 && matchesTierPurchase(units[0], tier);
+}
+
+export function isConfirmedPayPalCapture(order, tier) {
+  if (order?.status !== 'COMPLETED') return false;
+  const units = Array.isArray(order.purchase_units) ? order.purchase_units : [];
+  if (units.length !== 1 || !matchesTierPurchase(units[0], tier)) return false;
+  const captures = units[0]?.payments?.captures;
+  return Array.isArray(captures) && captures.some((capture) =>
+    capture?.status === 'COMPLETED'
+      && capture?.amount?.currency_code === TIERS[tier].currency
+      && Math.round(Number(capture?.amount?.value) * 100) === Math.round(TIERS[tier].price * 100)
+  );
+}
+
 const PURCHASE_LINK = 'https://www.paypal.me/pctechguyonline305';
 
 function deny(message) {

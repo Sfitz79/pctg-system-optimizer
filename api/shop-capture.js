@@ -3,6 +3,7 @@
 // download links. Called via PayPal return_url (orderId passed by PayPal) or
 // directly in demo mode.
 import { newLicenceKey, issueLicence } from '../lib/licence-store.js';
+import { isConfirmedPayPalCapture, isExpectedPayPalOrder } from '../src/licence-core.js';
 
 export default async (req, res) => {
   const orderId = decodeURIComponent((req.query && req.query.orderId) || '');
@@ -28,6 +29,10 @@ export default async (req, res) => {
     '<meta name="viewport" content="width=device-width, initial-scale=1"><title>' + title + ' — PCTG System Optimizer Pro</title>' +
     '<style>body{font-family:Segoe UI,Inter,system-ui,sans-serif;background:#0a0710;color:#f2eefb;display:flex;align-items:center;min-height:100vh;margin:0;padding:24px}.card{max-width:640px;margin:0 auto;background:#171126;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:36px;text-align:center}h1{font-size:26px;margin:0 0 8px}.key{font-size:20px;letter-spacing:1px;background:#1f1733;border:1px solid #7B2FFF;border-radius:10px;padding:14px;margin:20px 0;color:#7B2FFF;font-weight:700;word-break:break-all}.btn{display:inline-block;background:linear-gradient(120deg,#7B2FFF,#9b4dff);color:#fff;text-decoration:none;padding:13px 26px;border-radius:10px;font-weight:700;margin:6px}.btn.g{background:linear-gradient(120deg,#00c853,#00e676);color:#06300f}.muted{color:#a79ec2;font-size:13px;margin-top:18px}</style></head>' +
     '<body><div class="card">' + v + '</div></body></html>';
+
+  if (!TIERS[tier]) {
+    return res.status(400).send(page('Checkout error', '<h1>Unknown licence tier</h1><p>Please restart checkout and choose a valid product.</p>'));
+  }
 
   if (!orderId) return res.status(400).send(page('Checkout error', '<h1>Missing order reference</h1><p>No PayPal order was provided. Please try the purchase again.</p>'));
 
@@ -56,17 +61,31 @@ export default async (req, res) => {
         body: 'grant_type=client_credentials'
       })).json();
 
-      const cap = await (await fetch(hostApi + '/v2/checkout/orders/' + orderId + '/capture', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json', 'PayPal-Request-Id': 'pctg-' + Date.now() }
-      })).json();
+      if (!t.access_token) throw new Error('PayPal authentication did not return an access token.');
 
-      const detail = (cap.purchase_units && cap.purchase_units[0] && cap.purchase_units[0].payments && cap.purchase_units[0].payments.captures) || [];
-      if (cap.status === 'COMPLETED' || detail.length) {
-        paid = !!detail.find((c) => c.status === 'COMPLETED') || detail.length > 0;
-      } else if (cap.status === 'APPROVED') {
-        // Buyer approved but payment hasn't settled yet — treat as paid for instant delivery.
-        paid = true;
+      const orderRes = await fetch(hostApi + '/v2/checkout/orders/' + encodeURIComponent(orderId), {
+        headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' }
+      });
+      const order = await orderRes.json();
+      if (!orderRes.ok || !isExpectedPayPalOrder(order, tier)) {
+        return res.status(402).send(page('Payment incomplete', '<h1>Payment not confirmed</h1><p>This order does not match the selected licence or its full price. No key was issued.</p>'));
+      }
+
+      if (order.status === 'COMPLETED') {
+        paid = isConfirmedPayPalCapture(order, tier);
+      } else {
+        const capRes = await fetch(hostApi + '/v2/checkout/orders/' + encodeURIComponent(orderId) + '/capture', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + t.access_token,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+            'PayPal-Request-Id': 'pctg-cap-' + orderId
+          },
+          body: '{}'
+        });
+        const capture = await capRes.json();
+        paid = capRes.ok && isConfirmedPayPalCapture(capture, tier);
       }
     } catch (e) {
       return res.status(502).send(page('Payment error', '<h1>Could not confirm payment</h1><p>There was a problem contacting PayPal. Your payment may still have gone through — <a href="mailto:info@pctechguyonline.com">contact us</a> if so and we will sort your key immediately.</p>'));
@@ -127,7 +146,7 @@ export default async (req, res) => {
    * supported. web/updates/latest.json is the manifest the desktop app itself checks for
    * updates, so it cannot drift from the app the way a literal in this file did.
    */
-  let version = '1.3.0';
+  let version = '1.5.0';
   try {
     const mf = await fetch(new URL('/updates/latest.json', base).href, { redirect: 'follow' });
     if (mf.ok) {

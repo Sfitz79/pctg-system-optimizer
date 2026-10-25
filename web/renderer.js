@@ -1,15 +1,5 @@
 let activeTier = null;
-
-const demoKeys = {
-  'DEMO-STANDARD-1234': 'standard',
-  'DEMO-PRO-5678': 'pro',
-  'DEMO-FPS-9012': 'fps',
-  'DEMO-SEC-3456': 'security',
-  'DEMO-INT-7890': 'internet',
-  'DEMO-WIN-1111': 'winfix',
-  'DEMO-DEEP-2222': 'deep',
-  'DEMO-REPAIR-3333': 'repair'
-};
+let demoMode = false;
 
 const TIERS = {
   standard: { price: 30, unlocks: ['cleanup', 'performance', 'final', 'restore', 'registry', 'disk'] },
@@ -79,25 +69,9 @@ function findRequiredTier(phase) {
 }
 
 async function checkLicense(key) {
-  if (!key) {
-    const saved = localStorage.getItem('web_license');
-    if (saved) {
-      const data = JSON.parse(saved);
-      activeTier = data.tier;
-      return { active: true, tier: data.tier, message: 'License restored from browser storage' };
-    }
-    return { active: false, tier: null, message: 'No license key entered' };
-  }
-  const tier = demoKeys[key];
-  if (tier) {
-    activeTier = tier;
-    localStorage.setItem('web_license', JSON.stringify({ tier, key }));
-    return { active: true, tier, message: `Activated ${tier.toUpperCase()}! Welcome.` };
-  }
-  const autoTier = 'standard';
-  activeTier = autoTier;
-  localStorage.setItem('web_license', JSON.stringify({ tier: autoTier, key }));
-  return { active: true, tier: autoTier, message: `Demo mode — ${autoTier.toUpperCase()} tier activated.` };
+  localStorage.removeItem('web_license');
+  activeTier = null;
+  return { active: false, tier: null, message: key ? 'Browser preview cannot activate licenses. Activate your paid key in the installed app.' : 'Enter a paid license key in the installed app, or explore the preview.' };
 }
 
 function refreshUI() {
@@ -129,6 +103,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const appViews = document.getElementById('app');
   const licenseInput = document.getElementById('license-input');
   const activateBtn = document.getElementById('activate-btn');
+  const demoBtn = document.getElementById('demo-btn');
+  const demoExit = document.getElementById('demo-exit');
+  const demoBanner = document.getElementById('demo-banner');
   const licenseError = document.getElementById('license-error');
   const btnCleanup = document.getElementById('btn-cleanup');
   const btnPerformance = document.getElementById('btn-performance');
@@ -147,6 +124,36 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnRepair = document.getElementById('btn-repair');
   const btnExportPdf = document.getElementById('btn-export-pdf');
   const btnReport = document.getElementById('btn-report');
+
+  function setDemoMode(enabled) {
+    demoMode = enabled;
+    demoBanner.style.display = enabled ? 'flex' : 'none';
+    appViews.querySelectorAll('button, input, select, textarea').forEach(control => {
+      if (control.classList.contains('nav-btn') || control.id === 'demo-exit') return;
+      if (enabled) {
+        if (!Object.hasOwn(control.dataset, 'demoWasDisabled')) control.dataset.demoWasDisabled = String(control.disabled);
+        control.disabled = true;
+      } else if (Object.hasOwn(control.dataset, 'demoWasDisabled')) {
+        control.disabled = control.dataset.demoWasDisabled === 'true';
+        delete control.dataset.demoWasDisabled;
+      }
+    });
+  }
+
+  appViews.addEventListener('click', event => {
+    if (!demoMode) return;
+    const allowed = event.target.closest('.nav-btn, #demo-exit');
+    if (!allowed) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+  appViews.addEventListener('change', event => {
+    if (demoMode) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
 
   async function activate(key) {
     const result = await checkLicense(key);
@@ -168,8 +175,24 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  activateBtn.onclick = () => activate(licenseInput.value.trim());
+  activateBtn.onclick = async () => {
+    const result = await checkLicense(licenseInput.value.trim());
+    licenseError.textContent = result.message;
+  };
   licenseInput.addEventListener('keydown', e => { if (e.key === 'Enter') activate(licenseInput.value.trim()); });
+
+  demoBtn.onclick = () => {
+    activeTier = null;
+    licenseScreen.style.display = 'none';
+    appViews.style.display = 'block';
+    setDemoMode(true);
+    showView('dashboard');
+  };
+  demoExit.onclick = () => {
+    setDemoMode(false);
+    appViews.style.display = 'none';
+    licenseScreen.style.display = 'block';
+  };
 
   btnCleanup.onclick = () => runPhase('cleanup', 'Phase 1 — Clean & Clear');
   btnPerformance.onclick = () => runPhase('performance', 'Phase 2 — Performance Boost');

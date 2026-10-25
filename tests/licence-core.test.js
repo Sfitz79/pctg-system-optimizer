@@ -19,6 +19,8 @@ import {
   evaluateLicence,
   generateLicenceKey,
   initialLicences,
+  isConfirmedPayPalCapture,
+  isExpectedPayPalOrder,
   normaliseKey,
   normaliseMachineId,
   resolveTier,
@@ -26,6 +28,33 @@ import {
 
 const MACHINE_A = 'MACHINE-A-0001';
 const MACHINE_B = 'MACHINE-B-0002';
+
+test('PayPal checkout requires the exact approved product and price before capture', () => {
+  const order = {
+    status: 'APPROVED',
+    purchase_units: [{ reference_id: 'PCTG-PRO', amount: { currency_code: 'GBP', value: '50.00' } }],
+  };
+  assert.equal(isExpectedPayPalOrder(order, 'pro'), true);
+  assert.equal(isExpectedPayPalOrder({ ...order, status: 'CREATED' }, 'pro'), false);
+  assert.equal(isExpectedPayPalOrder(order, 'standard'), false);
+  assert.equal(isExpectedPayPalOrder({ ...order, purchase_units: [{ ...order.purchase_units[0], amount: { currency_code: 'GBP', value: '0.01' } }] }, 'pro'), false);
+  assert.equal(isExpectedPayPalOrder({ ...order, purchase_units: [{ ...order.purchase_units[0], amount: { currency_code: 'USD', value: '50.00' } }] }, 'pro'), false);
+});
+
+test('PayPal licence issuance requires a completed capture matching the full tier amount', () => {
+  const order = {
+    status: 'COMPLETED',
+    purchase_units: [{
+      custom_id: 'PCTG-PRO',
+      amount: { currency_code: 'GBP', value: '50.00' },
+      payments: { captures: [{ status: 'COMPLETED', amount: { currency_code: 'GBP', value: '50.00' } }] },
+    }],
+  };
+  assert.equal(isConfirmedPayPalCapture(order, 'pro'), true);
+  assert.equal(isConfirmedPayPalCapture({ ...order, status: 'APPROVED' }, 'pro'), false);
+  assert.equal(isConfirmedPayPalCapture({ ...order, purchase_units: [{ ...order.purchase_units[0], payments: { captures: [{ status: 'PENDING', amount: { currency_code: 'GBP', value: '50.00' } }] } }] }, 'pro'), false);
+  assert.equal(isConfirmedPayPalCapture({ ...order, purchase_units: [{ ...order.purchase_units[0], payments: { captures: [{ status: 'COMPLETED', amount: { currency_code: 'GBP', value: '10.00' } }] } }] }, 'pro'), false);
+});
 
 test('normaliseKey trims and rejects unusable input', () => {
   assert.equal(normaliseKey('  PCTG-AAA  '), 'PCTG-AAA');

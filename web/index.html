@@ -20,6 +20,7 @@
     <h2>PCTG System Optimizer Pro</h2>
     <input id="license-input" placeholder="Enter your license key">
     <button id="activate-btn">Activate</button>
+    <button id="demo-btn" type="button">Explore Demo</button>
     <div id="pricing">
       <div class="tier-card" data-tier="standard">
         <div class="tier-name">Standard</div>
@@ -116,6 +117,10 @@
   </div>
 
   <div id="app" class="screen" style="display:none">
+    <div id="demo-banner" class="demo-banner" style="display:none">
+      <span>Preview mode — navigate screens; product functions require a paid license in the installed app.</span>
+      <button id="demo-exit" type="button">Return to activation</button>
+    </div>
     <div class="nav">
       <img src="logo.png" alt="PCTG Logo" class="brand-logo">
       <button id="nav-dashboard" class="nav-btn active">Dashboard</button>

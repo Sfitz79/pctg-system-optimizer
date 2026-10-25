@@ -23,7 +23,7 @@
  */
 
 import { LicenceStore } from './licence-store.js';
-import { decisionToResponse, evaluateLicence, generateLicenceKey, resolveTier } from './licence-core.js';
+import { decisionToResponse, evaluateLicence, generateLicenceKey, isConfirmedPayPalCapture, isExpectedPayPalOrder, resolveTier } from './licence-core.js';
 
 const GITHUB = 'https://github.com/Sfitz79/pctg-system-optimizer/releases/latest/download';
 
@@ -251,6 +251,12 @@ async function handleShopCapture(request, env) {
     });
   }
 
+  if (!tier.ok) {
+    return new Response(successPage('<h1>Unknown licence tier</h1><p>Please restart checkout and choose a valid product.</p>', 'Checkout error'), {
+      status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
+
   let paid = false;
   let demoPaid = false;
   let captureId = null;
@@ -273,6 +279,22 @@ async function handleShopCapture(request, env) {
     try {
       const { host, token } = await paypalToken(cfg);
 
+      const orderRes = await fetch(`${host}/v2/checkout/orders/${encodeURIComponent(orderId)}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const order = await orderRes.json().catch(() => ({}));
+      if (!orderRes.ok || !isExpectedPayPalOrder(order, tier.tier)) {
+        return new Response(successPage('<h1>Payment not confirmed</h1><p>This order does not match the selected licence or its full price. No key was issued.</p>', 'Payment incomplete'), {
+          status: 402, headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+      }
+
+      if (order.status === 'COMPLETED') {
+        paid = isConfirmedPayPalCapture(order, tier.tier);
+        const priorCapture = order.purchase_units?.[0]?.payments?.captures?.find((capture) => capture.status === 'COMPLETED');
+        captureId = priorCapture?.id || null;
+      } else {
+
       // Prefer: return=representation - without it v2 returns only id/status/links
       // and there is no capture detail to inspect.
       const capRes = await fetch(`${host}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
@@ -286,22 +308,11 @@ async function handleShopCapture(request, env) {
         body: '{}',
       });
       const cap = await capRes.json().catch(() => ({}));
-
-      const captures =
-        cap?.purchase_units?.[0]?.payments?.captures || [];
-
-      // FAIL CLOSED. The old code also accepted status === 'APPROVED', which is
-      // the buyer approving but the money not settled. A licence must only be
-      // issued against a COMPLETED capture.
-      const completed = captures.find((c) => c.status === 'COMPLETED');
-      if (completed) {
-        paid = true;
+      paid = capRes.ok && isConfirmedPayPalCapture(cap, tier.tier);
+      const completed = cap?.purchase_units?.[0]?.payments?.captures?.find((capture) => capture.status === 'COMPLETED');
+      if (paid && completed) {
         captureId = completed.id || null;
-      } else if (cap?.status === 'COMPLETED' && captures.length === 0) {
-        // Order-level COMPLETED with no capture detail returned. Only trust it if
-        // PayPal says the order is fully completed AND we are in live mode with a
-        // represented response; otherwise refuse.
-        paid = false;
+      }
       }
     } catch (e) {
       return new Response(successPage('<h1>Could not confirm payment</h1><p>There was a problem contacting PayPal. Your payment may still have gone through &mdash; <a href="mailto:info@pctechguyonline.com">contact us</a> if so and we will sort your key immediately.</p>', 'Payment error'), {

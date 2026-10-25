@@ -3,6 +3,16 @@
 (function () {
   'use strict';
 
+  // Lock product actions synchronously after each view renders. Navigation and
+  // purchase links remain usable; this public preview cannot activate licences.
+  function lockDemoControls(root) {
+    root.querySelectorAll('button:not(.preview-nav), input, select, textarea').forEach(function (control) {
+      control.disabled = true;
+      control.setAttribute('aria-disabled', 'true');
+      control.title = 'Preview only — activate a paid licence in the installed app to use this function.';
+    });
+  }
+
   /* ============ STATE ============ */
   var state = {
     health: 58,
@@ -39,7 +49,7 @@
       gameMode: true,
       lowLatency: true
     },
-    licence: 'PRO trial' // 'PRO', 'Standard', 'Repair', or trail message
+    licence: 'DEMO — preview only'
   };
 
   var toasts = { next: 1 };
@@ -81,12 +91,18 @@
   };
 
   function go(view) {
+    if (VIEWS.indexOf(view) === -1) view = 'dashboard';
     VIEWS.forEach(function (v) {
       $('#view-' + v).hidden = (v !== view);
     });
     $$('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
     $('#page-title').textContent = TITLES[view];
     views[view]();
+    lockDemoControls($('#view-' + view));
+    $$('.nav-item').forEach(function (b) {
+      if (b.dataset.view === view) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
     if (location.hash !== '#' + view) {
       try { history.replaceState(null, '', '#' + view); } catch (e) { /* hash is cosmetic */ }
     }
@@ -108,21 +124,21 @@
       '</div>' +
       '<div class="panel">' +
       '<h2>Quick actions</h2>' +
-      '<p class="lede">The full 20-minute optimisation protocol, compressed into one click (simulated here, of course).</p>' +
+      '<p class="lede">Explore the screens below. Sample figures illustrate the interface; product actions require a paid licence in the installed Windows app.</p>' +
       '<div class="panel-row">' +
-      '<button class="btn btn-green" id="qa-optimise">🚀 Run Optimisation</button>' +
-      '<button class="btn btn-primary" id="qa-bench">📊 Run Benchmark</button>' +
-      '<button class="btn btn-outline" id="qa-restore">↩️ Restore Point</button>' +
+      '<button class="btn btn-green preview-nav" id="qa-optimise">🚀 View Optimisation</button>' +
+      '<button class="btn btn-primary preview-nav" id="qa-bench">📊 View Benchmark</button>' +
+      '<button class="btn btn-outline preview-nav" id="qa-restore">↩️ View Restore Points</button>' +
       '</div>' +
       '</div>' +
       (state.lastRun
         ? '<div class="panel"><h2>Last run</h2><p class="lede">' + state.lastRun + '</p>' +
           '<div class="panel-row"><span class="tag ok">Restore point available</span></div></div>'
-        : '<div class="panel"><h2>Ready when you are</h2><p class="lede">No optimisation has run yet in this demo session. Hit <b>Run Optimisation</b> above and watch the three-phase protocol play out.</p></div>');
+        : '<div class="panel"><h2>Ready when you are</h2><p class="lede">Choose a screen from the navigation or quick links above. This browser preview does not scan or change your PC.</p></div>');
 
-    $('#qa-optimise').addEventListener('click', function () { go('optimise'); setTimeout(runOptimisation, 60); });
-    $('#qa-bench').addEventListener('click', function () { go('benchmark'); setTimeout(runBenchmark, 60); });
-    $('#qa-restore').addEventListener('click', createRestorePoint);
+    $('#qa-optimise').addEventListener('click', function () { go('optimise'); });
+    $('#qa-bench').addEventListener('click', function () { go('benchmark'); });
+    $('#qa-restore').addEventListener('click', function () { go('restore'); });
   }
 
   /* ============ OPTIMISE (CLI console) ============ */
@@ -226,12 +242,12 @@
     $('#view-optimise').innerHTML =
       '<div class="panel">' +
       '<h2>One-Click Optimise</h2>' +
-      '<p class="lede">Runs the same Clean → Boost → Sweep playbook a pro tech would run. In the real app this takes ~20 minutes; here it plays out in seconds with simulated output.</p>' +
+      '<p class="lede">Preview the Clean → Boost → Sweep workflow. Running an optimisation requires a paid licence in the installed Windows app.</p>' +
       '<div class="panel-row" style="margin-bottom:16px"><button class="btn btn-green" id="opt-run">🚀 Run Optimisation</button></div>' +
       '<div class="progress-wrap"><i id="opt-progress"></i></div>' +
       '<div class="progress-lbl" id="opt-progress-lbl">0% — idle</div>' +
       '<div class="console" id="opt-console">' +
-      '<span class="t-dim">// PCTG System Optimizer Pro — interactive demo\n// Type nothing, click the button. Everything here is simulated.</span>' +
+      '<span class="t-dim">// PCTG System Optimizer Pro — interactive demo\n// Preview only. Run optimisation in the licensed Windows app.</span>' +
       '</div></div>';
 
     consoleEl = $('#opt-console');
@@ -243,7 +259,7 @@
 
   /* ============ MODULES ============ */
   function renderModules() {
-    var html = '<div class="panel"><h2>The full toolkit</h2><p class="lede">The 12 modules that ship in the real app. In this demo, "applied" badges update when the optimisation runs above.</p></div>';
+    var html = '<div class="panel"><h2>The full toolkit</h2><p class="lede">Browse the toolkit. Running modules requires a paid licence in the installed Windows app.</p></div>';
     html += '<div class="mods">';
     state.modules.forEach(function (m) {
       html += '<div class="mod' + (m.applied ? ' done' : '') + '" data-mod="' + m.id + '">' +
@@ -254,12 +270,12 @@
     html += '</div>' +
       '<div class="panel"><h2>Single-module licences</h2>' +
       '<p class="lede">FPS Booster, Security, Internet/WiFi, WinFix and Deep Optimize are each available as focused £10 licences in the real product.</p>' +
-      '<button class="btn btn-outline" id="mod-see-lic">See licence prices</button></div>';
+      '<button class="btn btn-outline preview-nav" id="mod-see-lic">See licence prices</button></div>';
     $('#view-modules').innerHTML = html;
     $('#mod-see-lic').addEventListener('click', function () {
       modal('<h3>Focused £10 licences</h3><p>Pick the one module you need, pay once, use forever — plus a PDF report and full restore.</p>' +
         '<div class="code">🎮 FPS Booster · £10\n🔒 Security Hardening · £10\n🌐 Internet / WiFi · £10\n🩹 1-Click WinFix · £10\n🔍 Deep Optimize · £10</div>' +
-        '<a class="btn btn-primary" href="https://www.paypal.me/pctechguyonline305/10" target="_blank" rel="noopener">Buy a £10 Module</a>');
+        '<a class="btn btn-primary" href="/#pricing" target="_blank" rel="noopener">Buy a £10 Module</a>');
     });
   }
 
@@ -338,7 +354,7 @@
     if (!state.benchmarks.before && !state.benchmarks.after) {
       $('#view-benchmark').innerHTML =
         '<div class="panel"><h2>Benchmark</h2>' +
-        '<p class="lede">Measure before, optimise, measure again — and export the proof as a PDF. This demo simulates a full benchmark run.</p>' +
+        '<p class="lede">Preview the benchmark screen. Measurements and PDF exports require a paid licence in the installed Windows app; this preview does not measure your PC.</p>' +
         '<button class="btn btn-primary" id="bench-start">📊 Run Benchmark</button></div>';
       $('#bench-start').addEventListener('click', function () { runBenchmark(); });
     } else if (state.benchmarks.after) {
@@ -360,7 +376,7 @@
 
   function renderRestore() {
     var html = '<div class="panel"><h2>Restore points</h2>' +
-      '<p class="lede">Every optimisation in the real app writes a restore point — nothing is left behind you can\'t undo. In this demo, rolling back just resets the simulated stats.</p>' +
+      '<p class="lede">Preview the restore point list with sample data. Creating restore points and rolling back require the installed Windows app.</p>' +
       '<button class="btn btn-outline" id="rp-create">➕ Create restore point</button></div>';
     html += '<div class="panel" style="padding:0"><table class="table"><thead><tr><th>Created</th><th>Note</th><th></th></tr></thead><tbody>';
     state.restorePoints.forEach(function (p) {
@@ -388,39 +404,26 @@
   function renderLicences() {
     $('#view-licences').innerHTML =
       '<div class="panel"><h2>Licences — pay once, use forever</h2>' +
-      '<p class="lede">Real pricing from the product page. In this demo you can also "activate" a licence key just to see the flow.</p>' +
+      '<p class="lede">Real pricing from the product page. This preview cannot activate keys or unlock paid functions.</p>' +
       '<div class="lic-badge" style="font-size:13px; display:inline-block; margin-top:4px">Current: ' + state.licence + '</div></div>' +
       '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">' +
       '<div class="plan featured"><div class="p-name">PRO</div><div class="p-price">£50 <small>· best value</small></div>' +
       '<ul><li>Everything in Standard</li><li>Gaming FPS booster</li><li>Security hardening</li><li>Internet / WiFi</li><li>1-Click WinFix</li><li>Deep optimisation + toggles</li><li>Full restore</li></ul>' +
-      '<a class="btn btn-primary" href="https://www.paypal.me/pctechguyonline305/50" target="_blank" rel="noopener">Buy PRO — £50</a></div>' +
+      '<a class="btn btn-primary" href="/#pricing" target="_blank" rel="noopener">Buy PRO — £50</a></div>' +
       '<div class="plan"><div class="p-name">Standard</div><div class="p-price">£30</div>' +
       '<ul><li>Clean &amp; Clear</li><li>Performance Boost</li><li>Final Sweep</li><li>Full restore</li></ul>' +
-      '<a class="btn btn-outline" href="https://www.paypal.me/pctechguyonline305/30" target="_blank" rel="noopener">Buy Standard — £30</a></div>' +
+      '<a class="btn btn-outline" href="/#pricing" target="_blank" rel="noopener">Buy Standard — £30</a></div>' +
       '<div class="plan"><div class="p-name">System Test &amp; Repair</div><div class="p-price">£25</div>' +
       '<ul><li>SFC / DISM repair</li><li>CHKDSK disk check</li><li>BCD boot check</li><li>Network reset</li><li>Memory diagnostic</li></ul>' +
-      '<a class="btn btn-outline" href="https://www.paypal.me/pctechguyonline305/25" target="_blank" rel="noopener">Buy Repair — £25</a></div>' +
+      '<a class="btn btn-outline" href="/#pricing" target="_blank" rel="noopener">Buy Repair — £25</a></div>' +
       '</div>' +
-      '<div class="panel"><h2>Activate a key (demo)</h2>' +
-      '<p class="lede">Enter any made-up key in the format <b>PCTG-XXXX-XXXX</b> and watch the simulated activation flow.</p>' +
-      '<div class="panel-row"><input class="input" id="lic-key" placeholder="PCTG-ABCD-1234" style="max-width:320px" />' +
-      '<button class="btn btn-primary" id="lic-activate">Activate</button></div>' +
-      '<div class="sub" style="font-size:12px; color:var(--muted); margin-top:8px">This only changes the demo UI — no real licence is granted.</div></div>';
-
-    $('#lic-activate').addEventListener('click', function () {
-      var k = $('#lic-key').value.trim().toUpperCase();
-      var ok = /^PCTG-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(k);
-      if (!ok) { toast('Key format: PCTG-XXXX-XXXX (demo format)', 'warn'); return; }
-      state.licence = 'PRO (activated, demo)';
-      $('#lic-badge').textContent = state.licence;
-      toast('Licence activated (simulated) — welcome aboard!', 'ok');
-      renderLicences();
-    });
+      '<div class="panel"><h2>Activate a paid licence</h2>' +
+      '<p class="lede">After purchase, download the desktop app and activate your issued licence key there. This preview never accepts or simulates licence keys.</p></div>';
   }
 
   /* ============ SETTINGS ============ */
   function renderSettings() {
-    var html = '<div class="panel"><h2>Settings</h2><p class="lede">Demo toggles — they change the UI state only. The real app persists these on your machine.</p></div>';
+    var html = '<div class="panel"><h2>Settings</h2><p class="lede">Preview the available preferences. Changing settings requires an activated licence in the installed Windows app.</p></div>';
     html += '<div class="panel">';
     Object.keys(state.settings).forEach(function (k) {
       var lbl = k.replace(/([A-Z])/g, ' $1');
@@ -480,8 +483,10 @@
       b.addEventListener('click', function () { go(b.dataset.view); });
     });
 
-    $('#db-close').addEventListener('click', function () { $('#demo-banner').remove(); });
+    $('#db-close').addEventListener('click', function () { $('#demo-banner').hidden = true; });
     $('#modal-close').addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    window.addEventListener('hashchange', function () { go(location.hash.slice(1)); });
     $('#modal').addEventListener('click', function (e) { if (e.target === $('#modal')) closeModal(); });
 
     setInterval(function () {
