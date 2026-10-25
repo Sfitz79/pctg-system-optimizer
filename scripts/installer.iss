@@ -1,6 +1,6 @@
 [Setup]
 AppName=PCTG Optimizer Pro
-AppVersion=1.4.1
+AppVersion=1.5.0
 AppPublisher=PcTechGuyOnline
 AppPublisherURL=https://pctechguyonline.com
 AppSupportURL=https://pctechguyonline.com

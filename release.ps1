@@ -14,7 +14,7 @@ param(
 #   .\release.ps1 1.3.0 -Local # build + release locally (no CI)
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
+$root = $PSScriptRoot
 $pkgPath = Join-Path $root "package.json"
 
 $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json

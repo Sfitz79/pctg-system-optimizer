@@ -46,9 +46,14 @@ const filesToObfuscate = [
   'report/report.js', 'report/systemInfo.js', 'report/system-analyzer.js'
 ];
 const dirsToCopy = ['app', 'scripts', 'license', 'report', 'assets', 'lib'];
-const filesToCopy = ['main.js', 'preload.js', 'package.json', 'package-lock.json', 'app.manifest', 'paypal-config.json'];
+const filesToCopy = ['main.js', 'preload.js', 'package.json', 'package-lock.json', 'app.manifest'];
 
 async function main() {
+  // Validate every recursive build-cleanup root before touching its contents.
+  for (const target of [buildDir, distDir]) {
+    const resolved = path.resolve(target);
+    if (!resolved.startsWith(path.resolve(rootDir) + path.sep)) throw new Error('Build cleanup target is outside the project');
+  }
   console.log('1. Cleaning...');
   if (fs.existsSync(buildDir)) fs.rmSync(buildDir, { recursive: true });
   /*
@@ -124,6 +129,8 @@ async function main() {
     }
   }
 
+  fs.writeFileSync(path.join(buildDir, 'paypal-config.json'), JSON.stringify({clientId:'',secret:'',mode:'sandbox',currency:'GBP'}));
+
   // Ensure licence runtime files exist in the build (gitignored in the repo, so
   // a clean checkout may not have them). Never ship real keys from the repo.
   for (const [rel, fallback] of [
@@ -131,7 +138,7 @@ async function main() {
     ['license/keys.json', '{"keys":[],"used":{}}']
   ]) {
     const fp = path.join(buildDir, rel);
-    if (!fs.existsSync(fp)) {
+    {
       fs.writeFileSync(fp, fallback);
       console.log(`  created ${rel} placeholder`);
     }
@@ -285,7 +292,7 @@ await asar.createPackage(buildDir, asarPath);
   const exePath = path.join(appDir, 'PCTG Optimizer Pro.exe');
   const rcedit = path.join(rootDir, 'node_modules', 'rcedit', 'bin', 'rcedit-x64.exe');
   const manifest = path.join(buildDir, 'app.manifest');
-  execSync(`"${rcedit}" "${exePath}" --application-manifest "${manifest}"`, { stdio: 'inherit' });
+  execSync(`"${rcedit}" "${exePath}" --application-manifest "${manifest}" --set-file-version "${pkg.version}" --set-product-version "${pkg.version}" --set-version-string ProductName "PCTG Optimizer Pro" --set-version-string CompanyName "PcTechGuyOnline" --set-version-string FileDescription "PCTG Optimizer Pro"`, { stdio: 'inherit' });
 
   console.log('11. Creating PCTG Optimizer.zip...');
   const zipPath = path.join(distDir, 'PCTG Optimizer.zip');

@@ -22,9 +22,10 @@ if (process.platform === 'win32' && !process.argv.includes('--elevated')) {
   ]);
   const isAdmin = result.stdout ? result.stdout.toString().trim() === 'True' : false;
   if (!isAdmin) {
-    const scriptPath = process.argv[1] || path.join(__dirname, 'main.js');
+    const scriptPath = process.argv[1] || __dirname;
+    const { buildElevationCommand } = require('./lib/elevation-command.js');
     const child = spawn('powershell.exe', [
-      '-Command', `Start-Process -FilePath "${process.execPath}" -ArgumentList '"${scriptPath}","--elevated"' -Verb RunAs`
+      '-Command', buildElevationCommand(process.execPath, scriptPath, app.isPackaged)
     ], { detached: true, stdio: 'ignore' });
     child.unref();
     process.exit(0);

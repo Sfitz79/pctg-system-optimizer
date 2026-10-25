@@ -22,9 +22,13 @@ function setDemoMode(enabled) {
   const scanSection = document.getElementById('demo-system-scan');
   app.classList.toggle('demo-mode', enabled);
   banner.hidden = !enabled;
-  navigation.hidden = !enabled;
+  navigation.hidden = false;
   scanSection.hidden = !enabled;
   renderUpdateStatus();
+  app.querySelectorAll('.card[data-phase]').forEach(card => {
+    card.setAttribute('aria-disabled', String(enabled));
+    card.tabIndex = enabled ? -1 : 0;
+  });
 
   app.querySelectorAll('button, input, select, textarea').forEach((control) => {
     if (control.id === 'btn-settings' || control.id === 'btn-demo-exit' || control.id === 'btn-demo-scan') return;
@@ -88,7 +92,10 @@ document.getElementById('btn-install-update').addEventListener('click', async ()
   message.textContent = 'Downloading the verified installer… The app will close to install; your saved licence will be checked again when you reopen it.';
   try {
     const result = await window.pctg.downloadUpdate();
-    if (!result?.success) message.textContent = result?.message || 'The update could not be started.';
+    if (!result?.success) {
+      message.textContent = result?.message || 'The update could not be started.';
+      button.disabled = false;
+    }
   } catch (error) {
     message.textContent = `Update failed: ${error.message || error}`;
     button.disabled = false;
@@ -404,6 +411,7 @@ async function checkLicense() {
       if (proFirstRun) proFirstRun.style.display = 'none';
       if (startupManager) startupManager.style.display = 'none';
     }
+    window.pctgNavigate?.(document.getElementById('app').dataset.activeBlade || 'overview', false);
     if (activeTier !== 'pro' && !localStorage.getItem('pctg_bench_before')) {
       setTimeout(() => runAllBenchmarks('Initial Baseline Benchmark (Before)'), 1000);
     }
@@ -540,7 +548,18 @@ function initOptimizer() {
     }
     refreshReport();
   }
+  let phaseRunning = false;
+  let tuneUpRunning = false;
+  let progressTimer;
+  let recoveredBytes = 0;
   async function runPhase(phase, label) {
+    if (demoMode || !activeTier || phaseRunning) return false;
+    phaseRunning = true;
+    clearTimeout(progressTimer);
+    let beforeSpace;
+    if (phase === 'cleanup' || phase === 'final') {
+      try { beforeSpace = await window.pctg.getDiskSpace(); } catch {}
+    }
     stepCount = 0;
     showProgress(label, 0, 'Starting...');
     log(`▶ ${label}`);
@@ -549,22 +568,31 @@ function initOptimizer() {
       trackPhase(label);
       showProgress(label, 100, 'Complete');
       log(`✔ ${label} done.`);
-      setTimeout(hideProgress, 2500);
+      if (beforeSpace?.free > 0) {
+        try { const afterSpace = await window.pctg.getDiskSpace(); recoveredBytes += Math.max(0, afterSpace.free - beforeSpace.free); document.getElementById('report-disk').textContent = (recoveredBytes / 1073741824).toFixed(2) + ' GB'; } catch {}
+      }
+      progressTimer = setTimeout(hideProgress, 2500);
+      return true;
     } catch (e) {
       progressStatus.textContent = 'Failed';
       log(`✖ ${label}: ${e}`);
-    }
+      return false;
+    } finally { phaseRunning = false; }
   }
+  document.addEventListener('pctg:request-phase', event => {
+    if (tuneUpRunning || phaseRunning || demoMode || !activeTier) return;
+    runPhase(event.detail.phase, event.detail.label);
+  });
   // Wire feature grid cards
   const phaseMap = {
     registry: 'Registry Optimization',
     disk: 'Disk Optimization',
     fps: 'Windows Gaming Tweaks',
-    winfix: 'Windows Debloat Tool',
-    performance: 'Driver Maintenance',
+    winfix: 'Windows System Repair',
+    performance: 'Performance Boost',
     internet: 'DNS Optimization',
-    cleanup: 'Browser Boost',
-    security: 'WiFi Optimization',
+    cleanup: 'Clean & Clear',
+    security: 'Security Hardening',
     master: 'PCTG System Master',
     repair: 'System Test & Repair',
     uninstaller: 'Software Uninstaller',
@@ -575,10 +603,16 @@ function initOptimizer() {
     'gpu-intel': 'Intel GPU Tweaks'
   };
   document.querySelectorAll('.card[data-phase]').forEach(card => {
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.addEventListener('keydown', event => {
+      if (event.target === card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); card.click(); }
+    });
     const phase = card.dataset.phase;
     const label = phaseMap[phase] || phase;
     if (phase === 'gpu-select') return;
     card.addEventListener('click', async () => {
+      if (demoMode || !activeTier || phaseRunning) return;
       card.classList.add('running');
       await runPhase(phase, label);
       card.classList.remove('running');
@@ -608,14 +642,18 @@ function initOptimizer() {
     { key: 'final', label: 'Phase 3 \u2014 Final Sweep' }
   ];
   async function runTuneUp() {
+    if (demoMode || !activeTier || tuneUpRunning || phaseRunning) return;
+    tuneUpRunning = true;
+    try {
     const settings = getTuneUpSettings();
     for (const step of TUNEUP_STEPS) {
       if (settings[step.key] === false) {
         log('○ ' + step.label + ' skipped (disabled in Settings).');
         continue;
       }
-      await runPhase(step.key, step.label);
+      if (!await runPhase(step.key, step.label)) break;
     }
+    } finally { tuneUpRunning = false; }
   }
   const btnStart = document.getElementById('start-optimize');
   if (btnStart) {
@@ -724,25 +762,14 @@ function initOptimizer() {
 }
 
 // ======== Toggle Cards ========
-const ToggleScripts = {
-  proMode: { toggle: 'startupApps', phase: 'pro' },
-  internet: { toggle: 'telemetry', phase: 'internet' },
-  gpuBoost: { toggle: 'gameBar', phase: 'fps' }
-};
-
+// These actions run phases, not reversible switches. Use the same licensed
+// module controls instead of the old deep.ps1 toggles that ignored off-state.
 function setupToggleSwitches() {
+  const phases = {proMode:'pro', internet:'internet', gpuBoost:'fps'};
   document.querySelectorAll('.toggle-card[data-toggle]').forEach(card => {
-    const key = card.dataset.toggle;
-    const checkbox = card.querySelector('input[type="checkbox"]');
-    if (!checkbox || !ToggleScripts[key]) return;
-    const config = ToggleScripts[key];
-    // Restore saved state
-    const saved = localStorage.getItem('pctg_toggle_' + key);
-    if (saved === 'true') checkbox.checked = true;
-    checkbox.addEventListener('change', () => {
-      const enabled = checkbox.checked;
-      localStorage.setItem('pctg_toggle_' + key, enabled);
-      window.pctg.runToggle({ key: config.toggle, enabled: enabled ? 1 : 0 });
+    card.querySelector('.advanced-run')?.addEventListener('click', () => {
+      if (demoMode || !activeTier) return;
+      document.dispatchEvent(new CustomEvent('pctg:request-phase', {detail:{phase:phases[card.dataset.toggle],label:card.querySelector('h3').textContent}}));
     });
   });
 }
@@ -764,12 +791,8 @@ function setupTuneUpSettings() {
   const btn = document.getElementById('btn-settings');
   if (btn && panel) {
     const isOpen = () => panel.style.display === 'block';
-    btn.onclick = () => { panel.style.display = isOpen() ? 'none' : 'block'; };
-    document.addEventListener('click', (e) => {
-      if (isOpen() && !panel.contains(e.target) && e.target.id !== 'btn-settings') {
-        panel.style.display = 'none';
-      }
-    });
+    btn.onclick = () => { window.pctgNavigate('settings'); };
+
   }
   const checkboxes = document.querySelectorAll('[data-tuneup-step]');
   if (!checkboxes.length) return;
@@ -1330,20 +1353,17 @@ function refreshReport() {
     document.getElementById('report-net').textContent = '-';
     document.getElementById('report-overall').textContent = '-';
   }
-  window.pctg.getDiskSpace().then(d => {
-    const cleaned = d ? Math.round((d.used / 1073741824) * 10) / 10 : 0;
-    document.getElementById('report-disk').textContent = cleaned > 0 ? cleaned + ' GB' : '-';
-  }).catch(() => {});
+  if (!document.getElementById('report-disk').textContent || document.getElementById('report-disk').textContent === '--') document.getElementById('report-disk').textContent = 'Not measured yet';
   const log = document.getElementById('log');
   const changes = log ? log.textContent.split('\n').filter(l => l.includes('\u2714') || l.includes('>') || l.includes('complete')).slice(-20) : [];
   document.getElementById('report-changelog').innerHTML = changes.map(c => '<div>  ' + c.trim() + '</div>').join('') || '<div>No changes recorded yet.</div>';
   const reportSection = document.getElementById('report-section');
-  if (reportSection && phases.length > 0) reportSection.style.display = 'block';
+  if (reportSection) reportSection.style.display = 'block';
 }
 
 // ======== Keyboard shortcuts ========
 document.addEventListener('keydown', (e) => {
-  if (demoMode) return;
+  if (demoMode || !activeTier) return;
   if (e.ctrlKey && e.shiftKey && e.key === 'R') {
     localStorage.removeItem('pctg_bench_before');
     localStorage.removeItem('pctg_bench_after');

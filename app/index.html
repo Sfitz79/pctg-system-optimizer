@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PCTG Optimizer Pro</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="ui-refresh.css" />
 </head>
 <body>
 
@@ -53,7 +53,7 @@
   <!-- LICENSE / ACTIVATION OVERLAY -->
   <div id="license-screen">
     <div class="license-screen-inner">
-      <img src="../assets/pctg-logo.png" alt="PCTG Logo" class="brand-logo" />
+      <svg class="official-activation-logo" viewBox="215 215 1045 410" role="img" aria-label="Official PCTG logo"><image href="../assets/pctg-official-logo-v2.png" width="1472" height="832" /></svg>
       <h2>Activate PCTG Optimizer Pro</h2>
       <p>Enter your license key or purchase a plan to get started.</p>
       <div class="license-tiers">
@@ -122,7 +122,7 @@
     <!-- HEADER -->
     <header class="header">
       <div class="logo">
-        <img src="../assets/pctg-logo.png" alt="PCTG Logo" />
+        <svg class="official-app-logo" viewBox="215 215 1045 410" role="img" aria-label="Official PCTG logo"><image href="../assets/pctg-official-logo-v2.png" width="1472" height="832" /></svg>
         <h1>PCTG <span>OPTIMIZER PRO</span></h1>
       </div>
       <div class="header-right">
@@ -138,16 +138,20 @@
       <button id="btn-demo-scan" type="button">Scan this PC</button>
       <button id="btn-demo-exit" type="button">Return to activation</button>
     </div>
-    <nav id="demo-navigation" class="demo-navigation" aria-label="Preview sections" hidden>
-      <a href="#demo-dashboard">Dashboard</a>
-      <a href="#demo-optimise">Optimiser</a>
-      <a href="#demo-modules">Modules</a>
-      <a href="#demo-benchmark">Benchmark &amp; reports</a>
-      <a href="#settings-panel" data-demo-settings>Settings</a>
+    <nav id="demo-navigation" class="demo-navigation" aria-label="App sections">
+      <a href="#overview" data-blade="overview">Overview</a>
+      <a href="#optimiser" data-blade="optimiser">Optimiser</a>
+      <a href="#gaming" data-blade="gaming">Gaming</a>
+      <a href="#toolkit" data-blade="toolkit">Toolkit</a>
+      <a href="#startup" data-blade="startup">Startup &amp; hardware</a>
+      <a href="#benchmark" data-blade="benchmark">Benchmark &amp; report</a>
+      <a href="#activity" data-blade="activity">Activity</a>
+      <a href="#settings" data-blade="settings">Settings</a>
     </nav>
 
     <!-- MAIN DASHBOARD -->
     <main class="dashboard">
+      <div class="blade-heading"><span class="blade-eyebrow">YOUR GAMERS EDGE</span><h2 id="blade-title" tabindex="-1">Overview</h2><p id="blade-description">Your PC at a glance. Choose a tool when you are ready.</p></div>
 
       <section class="welcome" id="demo-dashboard">
         <h2>Welcome to PCTG Optimizer Pro</h2>
@@ -172,7 +176,7 @@
       </section>
 
       <!-- GAMING MODE (safe, reversible tweaks only) -->
-      <section class="tuneup-banner gaming-mode-banner">
+      <section class="tuneup-banner gaming-mode-banner" id="gaming-section">
         <div class="tuneup-copy">
           <h2>Gaming Mode</h2>
           <p>Stops known background launchers from competing with your game, and reports whether hardware-accelerated GPU scheduling is already on. Safe, reversible changes only - no aggressive registry edits.</p>
@@ -204,7 +208,7 @@
       </div>
 
       <!-- SYSTEM STATS ROW -->
-      <div class="stats-row">
+      <div class="stats-row" id="system-stats">
         <div class="stat-box">
           <span class="stat-label">CPU</span>
           <span class="stat-value" id="stat-cpu">0%</span>
@@ -231,7 +235,7 @@
         </div>
       </div>
 
-      <div class="sys-specs">
+      <div class="sys-specs" id="system-specs">
         <span id="stat-cpu-info"></span> &bull; <span id="stat-ram-info"></span> &bull; <span id="stat-gpu-info"></span> &bull; <span id="stat-disk-info"></span>
       </div>
 
@@ -262,21 +266,21 @@
       </section>
 
       <!-- TOGGLE ROW -->
-      <div class="toggles">
+      <div class="toggles" id="advanced-actions">
         <div class="toggle-card" data-toggle="proMode" title="Deep system cleanup and performance boost.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3z"/></svg>
-          <h3>PRO Mode</h3>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <h3>PRO Optimisation</h3>
+          <button class="advanced-run" type="button">Run tool</button>
         </div>
         <div class="toggle-card" data-toggle="internet" title="Improves speed, stability, and online gaming latency.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 3C7 3 2.7 5.6 1 9.5l2.2 1C4.5 8 8 6 12 6s7.5 2 8.8 4.5l2.2-1C21.3 5.6 17 3 12 3zm0 6c-3 0-5.5 1.7-6.5 4.1l2.2 1C8.4 12.2 10 11 12 11s3.6 1.2 4.3 3.1l2.2-1C17.5 10.7 15 9 12 9zm0 5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-          <h3>Internet Boost</h3>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <h3>Network Optimisation</h3>
+          <button class="advanced-run" type="button">Run tool</button>
         </div>
         <div class="toggle-card" data-toggle="gpuBoost" title="Boosts FPS and graphics performance automatically.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M3 7v10h18V7H3zm16 8H5V9h14v6zm-4-5h-2v2h2V10zm-4 0H9v2h2V10z"/></svg>
-          <h3>GPU Boost</h3>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <h3>Gaming Tweaks</h3>
+          <button class="advanced-run" type="button">Run tool</button>
         </div>
       </div>
 
@@ -313,30 +317,30 @@
             </button>
           </div>
         </div>
-        <div class="card" data-phase="winfix" title="Disables unnecessary apps for better performance.">
+        <div class="card" data-phase="winfix" title="Check and repair Windows system files with WinFix.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h18v2H3V3zm2 4h14l-1 12H6L5 7zm5 2v8h2V9H8zm4 0v8h2V9h-2z"/></svg>
-          <h4>Windows Debloat Tool</h4>
-          <p>Remove unwanted bloatware.</p>
+          <h4>Windows System Repair</h4>
+          <p>Check and repair Windows system files.</p>
         </div>
-        <div class="card" data-phase="performance" title="Fixes driver issues and improves stability.">
+        <div class="card" data-phase="performance" title="Apply Windows performance settings; this does not install drivers.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M22 7l-2 2-3-3 2-2c-1-1-2.5-1-3.5 0L12 7l5 5 3.5-3.5c1-1 1-2.5 0-3.5zM2 17v5h5l11-11-5-5L2 17z"/></svg>
-          <h4>Driver Maintenance</h4>
-          <p>Update and repair drivers.</p>
+          <h4>Performance Boost</h4>
+          <p>Apply the Windows performance tuning phase.</p>
         </div>
-        <div class="card" data-phase="internet" title="Uses the fastest DNS for your area.">
+        <div class="card" data-phase="internet" title="Run network and DNS tuning.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm-1 17.9A8 8 0 0 1 4.1 13H11v6.9zm0-8.9H4.1A8 8 0 0 1 11 4.1V11zm2 8.9V13h6.9A8 8 0 0 1 13 19.9zm0-8.9V4.1A8 8 0 0 1 19.9 11H13z"/></svg>
-          <h4>DNS Optimization</h4>
+          <h4>Network &amp; DNS</h4>
           <p>Boost your DNS speed.</p>
         </div>
         <div class="card" data-phase="cleanup" title="Speeds up website loading and browsing.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm5 10h-4v5h-2v-5H7v-2h4V5h2v5h4v2z"/></svg>
-          <h4>Browser Boost</h4>
-          <p>Optimize web browsing.</p>
+          <h4>Clean &amp; Clear</h4>
+          <p>Remove temporary files and cached clutter.</p>
         </div>
-        <div class="card" data-phase="security" title="Stronger, more stable wireless connection.">
+        <div class="card" data-phase="security" title="Run the security hardening phase.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-5a8 8 0 0 0-12 0l2 2a5 5 0 0 1 8 0l2-2zm4-4a14 14 0 0 0-20 0l2 2a11 11 0 0 1 16 0l2-2z"/></svg>
-          <h4>WiFi Optimization</h4>
-          <p>Improve WiFi stability.</p>
+          <h4>Security Hardening</h4>
+          <p>Review Defender, firewall and Windows security settings.</p>
         </div>
         <div class="card" data-phase="master" title="Full system repair &amp; speedup - app installs, tweaks, and advanced configuration.">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -364,11 +368,11 @@
           <p>Clean up the right-click menu — disable unwanted entries in one click.</p>
         </div>
       </div>
-      </div>
 
       <!-- BENCHMARK / REPORT SECTION -->
       <div class="section" id="demo-benchmark">
         <h3 class="section-title">Benchmark &amp; Report</h3>
+        <p class="benchmark-note">The built-in graphics test measures this app’s canvas rendering. It is not a game FPS test or a 3DMark score. Network results measure web response time.</p>
         <div class="bench-controls">
           <button id="btn-bench-full" class="btn primary" title="Run the full before/after benchmark (FPS + network) to measure your gains.">Run Full Benchmark</button>
           <button id="btn-bench-fps" class="btn" title="Measure average FPS only.">FPS Only</button>
@@ -388,7 +392,7 @@
       </div>
 
       <!-- LOG -->
-      <pre id="log" class="log"></pre>
+      <pre id="log" class="log" aria-label="Activity log" role="log"></pre>
 
       <!-- OPTIMISATION REPORT -->
       <div id="report-section" class="section" style="display:none">
@@ -403,7 +407,7 @@
             <div class="result-row"><span>FPS</span><span id="report-fps" class="result-val">--</span></div>
             <div class="result-row"><span>Network</span><span id="report-net" class="result-val">--</span></div>
             <div class="result-row"><span>Overall</span><span id="report-overall" class="result-val highlight">--</span></div>
-            <div class="result-row"><span>Disk Cleaned</span><span id="report-disk" class="result-val">--</span></div>
+            <div class="result-row"><span>Disk space recovered this session</span><span id="report-disk" class="result-val">--</span></div>
           </div>
         </div>
         <div id="report-changelog" class="changelog"></div>
@@ -418,6 +422,7 @@
   </div>
 
   <script src="three.min.js"></script>
+  <script src="navigation.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
